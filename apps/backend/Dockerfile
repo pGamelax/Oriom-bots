@@ -3,8 +3,8 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm ci --ignore-scripts
+COPY package.json ./
+RUN npm install --ignore-scripts
 
 # Generate Prisma client before compiling
 COPY prisma ./prisma/
@@ -20,8 +20,8 @@ FROM node:22-alpine
 WORKDIR /app
 
 # Only production deps
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev --ignore-scripts
+COPY package.json ./
+RUN npm install --omit=dev --ignore-scripts
 
 # Prisma client and schema (needed at runtime)
 COPY prisma ./prisma/
