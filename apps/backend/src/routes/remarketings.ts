@@ -12,19 +12,23 @@ const buttonSchema = t.Object({
   customDeliveryUrl:  t.Optional(t.String()),
 });
 
+const variantSchema = t.Object({
+  mediaUrl:       t.Optional(t.String()),
+  mediaType:      t.Optional(t.Union([t.Literal("image"), t.Literal("video")])),
+  caption:        t.Optional(t.String()),
+  useTextMessage: t.Boolean(),
+  textMessage:    t.Optional(t.String()),
+  buttons:        t.Array(buttonSchema),
+});
+
 const remarketingBody = t.Object({
   flowId:             t.String(),
   name:               t.String(),
   targetAudience:     t.Union([t.Literal("all"), t.Literal("new"), t.Literal("pending"), t.Literal("paid")]),
   intervalMinutes:    t.Number({ minimum: 1 }),
   startAfterMinutes:  t.Number({ minimum: 0 }),
-  mediaUrl:           t.Optional(t.String()),
-  mediaType:          t.Optional(t.Union([t.Literal("image"), t.Literal("video")])),
-  caption:            t.Optional(t.String()),
-  useTextMessage:     t.Boolean(),
-  textMessage:        t.Optional(t.String()),
   defaultDeliveryUrl: t.Optional(t.String()),
-  buttons:            t.Array(buttonSchema),
+  variants:           t.Array(variantSchema, { minItems: 1 }),
 });
 
 async function getUserId(request: Request): Promise<string | null> {
@@ -41,7 +45,12 @@ const include = {
       bot: { select: { id: true, username: true, name: true } },
     },
   },
-  buttons: { orderBy: { order: "asc" as const } },
+  variants: {
+    orderBy: { order: "asc" as const },
+    include: {
+      buttons: { orderBy: { order: "asc" as const } },
+    },
+  },
   logs: {
     orderBy: { startedAt: "desc" as const },
     take: 20,
@@ -75,7 +84,6 @@ export const remarketingRoutes = new Elysia({ prefix: "/api/remarketings" })
       orderBy: { createdAt: "desc" },
     });
 
-    // Attach payment stats to each
     const results = await Promise.all(
       remarketings.map(async (r) => ({
         ...r,
@@ -94,23 +102,29 @@ export const remarketingRoutes = new Elysia({ prefix: "/api/remarketings" })
     const flow = await prisma.flow.findFirst({ where: { id: body.flowId, userId } });
     if (!flow) { set.status = 404; return { error: "Fluxo não encontrado" }; }
 
-    const { buttons, ...data } = body;
+    const { variants, ...data } = body;
     const created = await prisma.remarketing.create({
       data: {
         ...data,
         userId,
-        mediaUrl:           data.mediaUrl           ?? null,
-        mediaType:          data.mediaType           ?? null,
-        caption:            data.caption             ?? null,
-        textMessage:        data.textMessage         ?? null,
-        defaultDeliveryUrl: data.defaultDeliveryUrl  ?? null,
-        buttons: {
-          create: buttons.map((b) => ({
-            text:               b.text,
-            value:              b.value,
-            order:              b.order,
-            useDefaultDelivery: b.useDefaultDelivery,
-            customDeliveryUrl:  b.customDeliveryUrl ?? null,
+        defaultDeliveryUrl: data.defaultDeliveryUrl ?? null,
+        variants: {
+          create: variants.map((v, vi) => ({
+            order: vi,
+            mediaUrl:       v.mediaUrl       ?? null,
+            mediaType:      v.mediaType      ?? null,
+            caption:        v.caption        ?? null,
+            useTextMessage: v.useTextMessage,
+            textMessage:    v.textMessage    ?? null,
+            buttons: {
+              create: v.buttons.map((b, bi) => ({
+                text:               b.text,
+                value:              b.value,
+                order:              bi,
+                useDefaultDelivery: b.useDefaultDelivery,
+                customDeliveryUrl:  b.customDeliveryUrl ?? null,
+              })),
+            },
           })),
         },
       },
@@ -130,26 +144,34 @@ export const remarketingRoutes = new Elysia({ prefix: "/api/remarketings" })
     const flow = await prisma.flow.findFirst({ where: { id: body.flowId, userId } });
     if (!flow) { set.status = 404; return { error: "Fluxo não encontrado" }; }
 
-    const { buttons, ...data } = body;
+    const { variants, ...data } = body;
 
-    await prisma.remarketingButton.deleteMany({ where: { remarketingId: params.id } });
+    // Delete existing variants (cascade deletes buttons)
+    await prisma.remarketingVariant.deleteMany({ where: { remarketingId: params.id } });
 
     const updated = await prisma.remarketing.update({
       where: { id: params.id },
       data: {
         ...data,
-        mediaUrl:           data.mediaUrl           ?? null,
-        mediaType:          data.mediaType           ?? null,
-        caption:            data.caption             ?? null,
-        textMessage:        data.textMessage         ?? null,
-        defaultDeliveryUrl: data.defaultDeliveryUrl  ?? null,
-        buttons: {
-          create: buttons.map((b) => ({
-            text:               b.text,
-            value:              b.value,
-            order:              b.order,
-            useDefaultDelivery: b.useDefaultDelivery,
-            customDeliveryUrl:  b.customDeliveryUrl ?? null,
+        defaultDeliveryUrl: data.defaultDeliveryUrl ?? null,
+        currentVariantIndex: 0, // reset rotation when edited
+        variants: {
+          create: variants.map((v, vi) => ({
+            order: vi,
+            mediaUrl:       v.mediaUrl       ?? null,
+            mediaType:      v.mediaType      ?? null,
+            caption:        v.caption        ?? null,
+            useTextMessage: v.useTextMessage,
+            textMessage:    v.textMessage    ?? null,
+            buttons: {
+              create: v.buttons.map((b, bi) => ({
+                text:               b.text,
+                value:              b.value,
+                order:              bi,
+                useDefaultDelivery: b.useDefaultDelivery,
+                customDeliveryUrl:  b.customDeliveryUrl ?? null,
+              })),
+            },
           })),
         },
       },
@@ -182,7 +204,6 @@ export const remarketingRoutes = new Elysia({ prefix: "/api/remarketings" })
     const existing = await prisma.remarketing.findFirst({ where: { id: params.id, userId } });
     if (!existing) { set.status = 404; return { error: "Remarketing não encontrado" }; }
 
-    // Reset lastRunAt so scheduler picks it up immediately
     await prisma.remarketing.update({
       where: { id: params.id },
       data: { lastRunAt: null },

@@ -300,6 +300,17 @@ export interface RemarketingButton {
   customDeliveryUrl: string | null;
 }
 
+export interface RemarketingVariant {
+  id: string;
+  order: number;
+  mediaUrl: string | null;
+  mediaType: "image" | "video" | null;
+  caption: string | null;
+  useTextMessage: boolean;
+  textMessage: string | null;
+  buttons: RemarketingButton[];
+}
+
 export interface RemarketingLog {
   id: string;
   remarketingId: string;
@@ -330,13 +341,9 @@ export interface Remarketing {
   targetAudience: "all" | "new" | "pending" | "paid";
   intervalMinutes: number;
   startAfterMinutes: number;
-  mediaUrl: string | null;
-  mediaType: "image" | "video" | null;
-  caption: string | null;
-  useTextMessage: boolean;
-  textMessage: string | null;
   defaultDeliveryUrl: string | null;
-  buttons: RemarketingButton[];
+  currentVariantIndex: number;
+  variants: RemarketingVariant[];
   logs: RemarketingLog[];
   paymentStats: RemarketingPaymentStats;
   lastRunAt: string | null;
@@ -350,18 +357,20 @@ export interface RemarketingPayload {
   targetAudience: "all" | "new" | "pending" | "paid";
   intervalMinutes: number;
   startAfterMinutes: number;
-  mediaUrl?: string;
-  mediaType?: "image" | "video";
-  caption?: string;
-  useTextMessage: boolean;
-  textMessage?: string;
   defaultDeliveryUrl?: string;
-  buttons: {
-    text: string;
-    value: number;
-    order: number;
-    useDefaultDelivery: boolean;
-    customDeliveryUrl?: string;
+  variants: {
+    mediaUrl?: string;
+    mediaType?: "image" | "video";
+    caption?: string;
+    useTextMessage: boolean;
+    textMessage?: string;
+    buttons: {
+      text: string;
+      value: number;
+      order: number;
+      useDefaultDelivery: boolean;
+      customDeliveryUrl?: string;
+    }[];
   }[];
 }
 

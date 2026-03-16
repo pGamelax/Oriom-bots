@@ -5,59 +5,66 @@ import { createPixPayment } from "./payment.js";
 
 const prisma = new PrismaClient();
 
-// ── Send remarketing message to one lead ──────────────────────────────────────
+// ── Send remarketing variant to one lead ───────────────────────────────────────
 
 async function sendToLead(
-  remarketing: Awaited<ReturnType<typeof loadRemarketing>>,
+  flowBotId: string,
+  variant: {
+    mediaUrl: string | null;
+    mediaType: string | null;
+    caption: string | null;
+    useTextMessage: boolean;
+    textMessage: string | null;
+    buttons: { id: string; text: string; value: number }[];
+  },
   lead: { telegramId: string; name: string | null }
 ): Promise<{ sent: boolean; blocked: boolean }> {
-  const bot = getActiveBot(remarketing!.flow.botId);
+  const bot = getActiveBot(flowBotId);
   if (!bot) return { sent: false, blocked: false };
 
   const telegramId = lead.telegramId;
 
-  // Build inline keyboard
+  // Build inline keyboard from variant buttons
   const keyboard = new InlineKeyboard();
-  for (const btn of remarketing!.buttons) {
+  for (const btn of variant.buttons) {
     const label = `R$ ${btn.value.toFixed(2).replace(".", ",")} — ${btn.text}`;
     keyboard.text(label, `rmkt:${btn.value}:${btn.id}`).row();
   }
-  const reply_markup = remarketing!.buttons.length > 0 ? keyboard : undefined;
+  const reply_markup = variant.buttons.length > 0 ? keyboard : undefined;
 
   try {
-    if (remarketing!.useTextMessage && remarketing!.textMessage?.trim()) {
+    if (variant.useTextMessage && variant.textMessage?.trim()) {
       // Send media first (if configured), then text message with buttons
-      if (remarketing!.mediaUrl && remarketing!.mediaType) {
-        if (remarketing!.mediaType === "video") {
-          await bot.api.sendVideo(telegramId, remarketing!.mediaUrl, { caption: remarketing!.caption ?? undefined });
+      if (variant.mediaUrl && variant.mediaType) {
+        if (variant.mediaType === "video") {
+          await bot.api.sendVideo(telegramId, variant.mediaUrl, { caption: variant.caption ?? undefined });
         } else {
-          await bot.api.sendPhoto(telegramId, remarketing!.mediaUrl, { caption: remarketing!.caption ?? undefined });
+          await bot.api.sendPhoto(telegramId, variant.mediaUrl, { caption: variant.caption ?? undefined });
         }
       }
-      await bot.api.sendMessage(telegramId, remarketing!.textMessage, { reply_markup });
-    } else if (remarketing!.mediaUrl && remarketing!.mediaType) {
-      if (remarketing!.mediaType === "video") {
-        await bot.api.sendVideo(telegramId, remarketing!.mediaUrl, {
-          caption: remarketing!.caption ?? undefined,
+      await bot.api.sendMessage(telegramId, variant.textMessage, { reply_markup });
+    } else if (variant.mediaUrl && variant.mediaType) {
+      if (variant.mediaType === "video") {
+        await bot.api.sendVideo(telegramId, variant.mediaUrl, {
+          caption: variant.caption ?? undefined,
           reply_markup,
         });
       } else {
-        await bot.api.sendPhoto(telegramId, remarketing!.mediaUrl, {
-          caption: remarketing!.caption ?? undefined,
+        await bot.api.sendPhoto(telegramId, variant.mediaUrl, {
+          caption: variant.caption ?? undefined,
           reply_markup,
         });
       }
-    } else if (remarketing!.caption) {
-      await bot.api.sendMessage(telegramId, remarketing!.caption, { reply_markup });
+    } else if (variant.caption) {
+      await bot.api.sendMessage(telegramId, variant.caption, { reply_markup });
     }
 
-    console.log(`[Remarketing] ✅ Sent to telegramId=${telegramId} (remarketing=${remarketing!.name})`);
     return { sent: true, blocked: false };
   } catch (err: any) {
     const msg = String(err?.description ?? err?.message ?? "").toLowerCase();
     if (msg.includes("blocked") || msg.includes("deactivated")) {
       await prisma.lead.updateMany({
-        where: { telegramId, botId: remarketing!.flow.botId },
+        where: { telegramId, botId: flowBotId },
         data: { status: "blocked" },
       }).catch(() => {});
       console.warn(`[Remarketing] Lead ${telegramId} blocked bot — marked as blocked`);
@@ -76,75 +83,67 @@ async function loadRemarketing(id: string) {
     where: { id },
     include: {
       flow: { select: { id: true, botId: true, userId: true } },
-      buttons: { orderBy: { order: "asc" } },
+      variants: {
+        orderBy: { order: "asc" },
+        include: { buttons: { orderBy: { order: "asc" } } },
+      },
     },
   });
 }
 
 // ── Run one remarketing ────────────────────────────────────────────────────────
 
-async function runRemarketing(id: string, name: string, flowBotId: string, targetAudience: string, startAfterMinutes: number) {
+async function runRemarketing(
+  id: string,
+  name: string,
+  flowBotId: string,
+  targetAudience: string,
+  startAfterMinutes: number,
+  currentVariantIndex: number
+) {
   const now = new Date();
 
   // Mark as running immediately to prevent duplicate runs
   await prisma.remarketing.update({ where: { id }, data: { lastRunAt: now } });
 
   const remarketing = await loadRemarketing(id);
-  if (!remarketing) return;
+  if (!remarketing || remarketing.variants.length === 0) return;
+
+  // Pick the current variant (clamp to valid range)
+  const safeIndex = Math.min(currentVariantIndex, remarketing.variants.length - 1);
+  const variant = remarketing.variants[safeIndex];
 
   // cutoff: leads must have been in target state for at least startAfterMinutes
   const cutoff = new Date(now.getTime() - startAfterMinutes * 60_000);
 
-  // Determine which leads to target and which timestamp to use as threshold
   let leads: { telegramId: string; name: string | null }[] = [];
 
   if (targetAudience === "paid") {
-    // For paid leads, use updatedAt (when they became paid) as threshold
     leads = await prisma.lead.findMany({
-      where: {
-        botId:     flowBotId,
-        status:    "paid",
-        updatedAt: { lte: cutoff },
-      },
+      where: { botId: flowBotId, status: "paid", updatedAt: { lte: cutoff } },
       select: { telegramId: true, name: true },
     });
   } else if (targetAudience === "pending") {
-    // For pending leads, use updatedAt (when they generated PIX) as threshold
     leads = await prisma.lead.findMany({
-      where: {
-        botId:     flowBotId,
-        status:    "pending",
-        updatedAt: { lte: cutoff },
-      },
+      where: { botId: flowBotId, status: "pending", updatedAt: { lte: cutoff } },
       select: { telegramId: true, name: true },
     });
   } else if (targetAudience === "new") {
-    // For new leads, use startedAt as threshold
     leads = await prisma.lead.findMany({
-      where: {
-        botId:     flowBotId,
-        status:    "new",
-        startedAt: { lte: cutoff },
-      },
+      where: { botId: flowBotId, status: "new", startedAt: { lte: cutoff } },
       select: { telegramId: true, name: true },
     });
   } else {
-    // "all": use startedAt as threshold, exclude blocked
     leads = await prisma.lead.findMany({
-      where: {
-        botId:     flowBotId,
-        status:    { notIn: ["blocked"] },
-        startedAt: { lte: cutoff },
-      },
+      where: { botId: flowBotId, status: { notIn: ["blocked"] }, startedAt: { lte: cutoff } },
       select: { telegramId: true, name: true },
     });
   }
 
   console.log(
-    `[Remarketing] Running "${name}" → ${leads.length} lead(s) (audience=${targetAudience}, startAfter=${startAfterMinutes}min)`
+    `[Remarketing] Running "${name}" variant ${safeIndex + 1}/${remarketing.variants.length} → ${leads.length} lead(s) (audience=${targetAudience}, startAfter=${startAfterMinutes}min)`
   );
 
-  // Create log entry
   const log = await prisma.remarketingLog.create({
     data: { remarketingId: id, startedAt: now },
   });
@@ -153,20 +152,25 @@ async function runRemarketing(id: string, name: string, flowBotId: string, targe
   let blockedCount = 0;
 
   for (const lead of leads) {
-    const result = await sendToLead(remarketing, lead);
+    const result = await sendToLead(flowBotId, variant, lead);
     if (result.sent) sentCount++;
     if (result.blocked) blockedCount++;
-    // Small delay between messages to avoid Telegram rate limits
     await new Promise((r) => setTimeout(r, 50));
   }
 
-  // Update log with results
   await prisma.remarketingLog.update({
     where: { id: log.id },
     data: { finishedAt: new Date(), sent: sentCount, blocked: blockedCount },
   });
 
-  console.log(`[Remarketing] ✅ Finished "${name}" — sent=${sentCount}, blocked=${blockedCount}`);
+  // Advance to next variant for the next run
+  const nextIndex = (safeIndex + 1) % remarketing.variants.length;
+  await prisma.remarketing.update({
+    where: { id },
+    data: { currentVariantIndex: nextIndex },
+  });
+
+  console.log(`[Remarketing] ✅ Finished "${name}" variant ${safeIndex + 1} — sent=${sentCount}, blocked=${blockedCount}`);
 }
 
 // ── Scheduler loop ─────────────────────────────────────────────────────────────
@@ -178,12 +182,13 @@ async function checkAndRunDue() {
     const due = await prisma.remarketing.findMany({
       where: { active: true },
       select: {
-        id:                true,
-        name:              true,
-        targetAudience:    true,
-        intervalMinutes:   true,
-        startAfterMinutes: true,
-        lastRunAt:         true,
+        id:                   true,
+        name:                 true,
+        targetAudience:       true,
+        intervalMinutes:      true,
+        startAfterMinutes:    true,
+        lastRunAt:            true,
+        currentVariantIndex:  true,
         flow: { select: { botId: true } },
       },
     });
@@ -194,7 +199,7 @@ async function checkAndRunDue() {
         now.getTime() - r.lastRunAt.getTime() >= r.intervalMinutes * 60_000;
 
       if (needsRun) {
-        runRemarketing(r.id, r.name, r.flow.botId, r.targetAudience, r.startAfterMinutes).catch((err) =>
+        runRemarketing(r.id, r.name, r.flow.botId, r.targetAudience, r.startAfterMinutes, r.currentVariantIndex).catch((err) =>
           console.error(`[Remarketing] Error running "${r.name}":`, err.message)
         );
       }
@@ -205,7 +210,6 @@ async function checkAndRunDue() {
 }
 
 // ── Handle rmkt: callback from Telegram button ─────────────────────────────────
-// Called from bot-manager when a user clicks an rmkt button
 
 export async function handleRemarketingCallback(params: {
   botId:    string;
@@ -226,13 +230,19 @@ export async function handleRemarketingCallback(params: {
 
   const rmktBtn = await prisma.remarketingButton.findUnique({
     where: { id: buttonId },
-    include: { remarketing: { select: { id: true, flowId: true, defaultDeliveryUrl: true } } },
+    include: {
+      variant: {
+        include: {
+          remarketing: { select: { id: true, flowId: true, defaultDeliveryUrl: true } },
+        },
+      },
+    },
   });
 
   if (!rmktBtn) return { ok: false };
 
   const flow = await prisma.flow.findUnique({
-    where: { id: rmktBtn.remarketing.flowId },
+    where: { id: rmktBtn.variant.remarketing.flowId },
     select: {
       id: true, userId: true,
       pixQrCaption: true, pixHowToPay: true, pixCopyLabel: true, pixAfterLabel: true,
@@ -258,7 +268,7 @@ export async function handleRemarketingCallback(params: {
       gatewayId:     pix.gatewayId,
       botId,
       flowId:        flow.id,
-      remarketingId: rmktBtn.remarketing.id,
+      remarketingId: rmktBtn.variant.remarketing.id,
       telegramId:    String(from.id),
       telegramName:  telegramName(from),
       planName,
@@ -288,8 +298,6 @@ export async function handleRemarketingCallback(params: {
 
 export function startRemarketingScheduler() {
   console.log("[Remarketing] Scheduler started — checking every 60s");
-  // Initial check after 10s (give bots time to start)
   setTimeout(checkAndRunDue, 10_000);
-  // Then check every minute
   setInterval(checkAndRunDue, 60_000);
 }

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, GitBranch, Layers, Loader2, Megaphone, Plus,
-  ToggleLeft, ToggleRight, Trash2, PackagePlus,
+  ArrowLeft, ChevronDown, ChevronUp, GitBranch, Layers, Loader2,
+  Megaphone, Plus, ToggleLeft, ToggleRight, Trash2, PackagePlus,
 } from "lucide-react";
 import { flowsApi, remarketingsApi, type RemarketingPayload } from "@/lib/api";
 import { MediaUpload, type MediaType } from "./media-upload";
@@ -19,6 +19,15 @@ interface Button {
   value: string;
   useDefaultDelivery: boolean;
   customDeliveryUrl: string;
+}
+
+interface VariantState {
+  mediaUrl: string;
+  mediaType: MediaType;
+  caption: string;
+  useTextMessage: boolean;
+  textMessage: string;
+  buttons: Button[];
 }
 
 type Audience = "all" | "new" | "pending" | "paid";
@@ -45,6 +54,17 @@ function SectionLabel({ label, description }: { label: string; description?: str
   );
 }
 
+function emptyVariant(): VariantState {
+  return {
+    mediaUrl: "",
+    mediaType: "image",
+    caption: "",
+    useTextMessage: false,
+    textMessage: "",
+    buttons: [{ text: "", value: "", useDefaultDelivery: true, customDeliveryUrl: "" }],
+  };
+}
+
 const AUDIENCES: { value: Audience; label: string; description: string }[] = [
   { value: "new",     label: "Nunca gerou PIX",      description: "Enviado X min após o /start para leads que ainda não geraram PIX" },
   { value: "pending", label: "Gerou PIX, não pagou", description: "Enviado X min após a geração do PIX para leads que não pagaram" },
@@ -66,6 +86,282 @@ const INTERVAL_OPTIONS = [
   { label: "12 horas",   value: 720 },
   { label: "24 horas",   value: 1440 },
 ];
+
+// ── VariantCard ────────────────────────────────────────────────────────────────
+
+interface VariantCardProps {
+  index: number;
+  total: number;
+  variant: VariantState;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onRemove: () => void;
+  onUpdate: (field: keyof Omit<VariantState, "buttons">, val: string | boolean) => void;
+  onUpdateButton: (bi: number, field: keyof Button, val: string | boolean) => void;
+  onAddButton: () => void;
+  onRemoveButton: (bi: number) => void;
+  flowButtons: { id: string; text: string; value: number; useDefaultDelivery: boolean; customDeliveryUrl: string | null }[];
+  onImportFlowButton: (b: { text: string; value: number; useDefaultDelivery: boolean; customDeliveryUrl: string | null }) => void;
+  onImportAllFlowButtons: () => void;
+  flowId: string;
+}
+
+function VariantCard({
+  index, total, variant, expanded, onToggleExpand, onRemove,
+  onUpdate, onUpdateButton, onAddButton, onRemoveButton,
+  flowButtons, onImportFlowButton, onImportAllFlowButtons, flowId,
+}: VariantCardProps) {
+  return (
+    <div className="bg-surface rounded-2xl border border-border overflow-hidden">
+      {/* Header */}
+      <div
+        className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-subtle transition-colors"
+        onClick={onToggleExpand}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-white text-xs font-bold shrink-0">
+            {index + 1}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-text-strong">Variante {index + 1}</p>
+            {!expanded && (
+              <p className="text-xs text-text-muted truncate max-w-65">
+                {variant.caption.trim() || variant.textMessage.trim() || "Sem mensagem configurada"}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {total > 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              className="p-1.5 rounded-lg text-text-muted hover:bg-red-50 hover:text-destructive transition-all"
+              title="Remover variante"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+          {expanded
+            ? <ChevronUp className="w-4 h-4 text-text-muted" />
+            : <ChevronDown className="w-4 h-4 text-text-muted" />
+          }
+        </div>
+      </div>
+
+      {/* Body */}
+      {expanded && (
+        <div className="px-5 pb-5 border-t border-border">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            {/* Left: media + caption + text message */}
+            <div className="flex flex-col gap-4">
+              {/* Media */}
+              <div className="bg-surface-subtle rounded-xl border border-border p-4">
+                <SectionLabel label="Mídia" description="Imagem ou vídeo. Opcional." />
+                <MediaUpload
+                  value={variant.mediaUrl}
+                  mediaType={variant.mediaType}
+                  onChange={(url, type) => { onUpdate("mediaUrl", url); onUpdate("mediaType", type); }}
+                  onClear={() => onUpdate("mediaUrl", "")}
+                />
+              </div>
+
+              {/* Caption */}
+              <div className="bg-surface-subtle rounded-xl border border-border p-4">
+                <SectionLabel label="Caption" description="Texto exibido junto à mídia." />
+                <textarea
+                  value={variant.caption}
+                  onChange={(e) => onUpdate("caption", e.target.value)}
+                  placeholder="Olá! Ainda tem interesse? Confira nossos planos 👇"
+                  rows={4}
+                  className={textareaClass}
+                />
+              </div>
+
+              {/* Separate text message */}
+              <div className="bg-surface-subtle rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between gap-3 mb-0">
+                  <SectionLabel
+                    label="Mensagem separada para os botões"
+                    description={variant.useTextMessage
+                      ? "Os botões serão enviados nesta mensagem."
+                      : "Os botões serão enviados junto ao caption da mídia."
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onUpdate("useTextMessage", !variant.useTextMessage)}
+                    className="shrink-0 mb-3"
+                  >
+                    {variant.useTextMessage
+                      ? <ToggleRight className="w-9 h-9 text-primary" />
+                      : <ToggleLeft className="w-9 h-9 text-text-placeholder" />
+                    }
+                  </button>
+                </div>
+                <div className={cn(
+                  "overflow-hidden transition-all duration-300",
+                  variant.useTextMessage ? "max-h-48 opacity-100" : "max-h-0 opacity-0"
+                )}>
+                  <textarea
+                    value={variant.textMessage}
+                    onChange={(e) => onUpdate("textMessage", e.target.value)}
+                    placeholder="Escolha um plano:"
+                    rows={3}
+                    className={textareaClass}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right: buttons */}
+            <div className="flex flex-col gap-4">
+              {/* Buttons list */}
+              <div className="bg-surface-subtle rounded-xl border border-border p-4">
+                <SectionLabel
+                  label="Planos desta variante"
+                  description="Botões enviados nesta variante."
+                />
+                <div className="flex flex-col gap-3">
+                  {variant.buttons.map((btn, bi) => (
+                    <div
+                      key={bi}
+                      className="rounded-xl border border-border bg-background p-3 flex flex-col gap-2"
+                    >
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          <div className="flex items-center justify-center shrink-0 w-7 h-7 rounded-full bg-lilac-light">
+                            <span className="text-xs font-bold text-primary">{bi + 1}</span>
+                          </div>
+                          <input
+                            type="text"
+                            value={btn.text}
+                            onChange={(e) => onUpdateButton(bi, "text", e.target.value)}
+                            placeholder="Nome do plano"
+                            className={cn(inputClass, "flex-1 min-w-0")}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => onRemoveButton(bi)}
+                            disabled={variant.buttons.length === 1}
+                            className="sm:hidden h-10 w-10 flex items-center justify-center rounded-lg text-text-muted hover:bg-red-50 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2 pl-9 sm:pl-0">
+                          <div className="relative flex-1 sm:flex-none sm:w-28 shrink-0">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-primary pointer-events-none">
+                              R$
+                            </span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={btn.value}
+                              onChange={(e) => onUpdateButton(bi, "value", e.target.value)}
+                              placeholder="0,00"
+                              className={cn(
+                                inputClass,
+                                "pl-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              )}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onRemoveButton(bi)}
+                            disabled={variant.buttons.length === 1}
+                            className="hidden sm:flex h-10 w-10 items-center justify-center rounded-lg text-text-muted hover:bg-red-50 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="pl-0 sm:pl-9 flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onUpdateButton(bi, "useDefaultDelivery", !btn.useDefaultDelivery)}
+                          className="flex items-center gap-2 self-start"
+                        >
+                          {btn.useDefaultDelivery
+                            ? <ToggleRight className="w-7 h-7 text-primary" />
+                            : <ToggleLeft className="w-7 h-7 text-text-placeholder" />
+                          }
+                          <span className="text-xs font-medium text-text-label">Usar entrega padrão</span>
+                        </button>
+                        {!btn.useDefaultDelivery && (
+                          <input
+                            type="url"
+                            value={btn.customDeliveryUrl}
+                            onChange={(e) => onUpdateButton(bi, "customDeliveryUrl", e.target.value)}
+                            placeholder="https://seu-link-de-entrega.com"
+                            className={inputClass}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onAddButton}
+                  className="mt-3 flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary-hover transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Adicionar plano
+                </button>
+              </div>
+
+              {/* Flow buttons reference */}
+              {flowId && (
+                <div className="bg-surface-subtle rounded-xl border border-border p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <SectionLabel label="Planos do fluxo" description="Clique em + para importar." />
+                    {flowButtons.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={onImportAllFlowButtons}
+                        className="shrink-0 h-8 px-3 rounded-lg text-xs font-medium border border-border text-text-label hover:border-border-medium transition-colors whitespace-nowrap"
+                      >
+                        Adicionar todos
+                      </button>
+                    )}
+                  </div>
+                  {flowButtons.length === 0 ? (
+                    <p className="text-xs text-text-muted">Este fluxo não tem planos cadastrados.</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {flowButtons.map((b) => (
+                        <div
+                          key={b.id}
+                          className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-background border border-border"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{b.text}</p>
+                            <p className="text-xs text-text-muted">R$ {b.value.toFixed(2).replace(".", ",")}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onImportFlowButton(b)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-lilac-light transition-colors shrink-0"
+                          >
+                            <PackagePlus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -93,15 +389,9 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
   const [targetAudience, setTargetAudience] = useState<Audience>("pending");
   const [intervalMinutes, setIntervalMinutes] = useState(60);
   const [startAfterMinutes, setStartAfterMinutes] = useState(20);
-  const [mediaUrl, setMediaUrl] = useState("");
-  const [mediaType, setMediaType] = useState<MediaType>("image");
-  const [caption, setCaption] = useState("");
-  const [useTextMessage, setUseTextMessage] = useState(false);
-  const [textMessage, setTextMessage] = useState("");
   const [defaultDeliveryUrl, setDefaultDeliveryUrl] = useState("");
-  const [buttons, setButtons] = useState<Button[]>([
-    { text: "", value: "", useDefaultDelivery: true, customDeliveryUrl: "" },
-  ]);
+  const [variants, setVariants] = useState<VariantState[]>([emptyVariant()]);
+  const [expandedVariant, setExpandedVariant] = useState(0);
 
   const selectReady = mode === "create"
     ? flowsLoaded
@@ -116,21 +406,25 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
       setTargetAudience(remarketing.targetAudience);
       setIntervalMinutes(remarketing.intervalMinutes);
       setStartAfterMinutes(remarketing.startAfterMinutes);
-      setMediaUrl(remarketing.mediaUrl ?? "");
-      setMediaType((remarketing.mediaType as MediaType) ?? "image");
-      setCaption(remarketing.caption ?? "");
-      setUseTextMessage(remarketing.useTextMessage);
-      setTextMessage(remarketing.textMessage ?? "");
       setDefaultDeliveryUrl(remarketing.defaultDeliveryUrl ?? "");
-      setButtons(
-        remarketing.buttons.length > 0
-          ? remarketing.buttons.map((b) => ({
-              text: b.text,
-              value: String(b.value),
-              useDefaultDelivery: b.useDefaultDelivery,
-              customDeliveryUrl: b.customDeliveryUrl ?? "",
+      setVariants(
+        remarketing.variants.length > 0
+          ? remarketing.variants.map((v) => ({
+              mediaUrl: v.mediaUrl ?? "",
+              mediaType: (v.mediaType as MediaType) ?? "image",
+              caption: v.caption ?? "",
+              useTextMessage: v.useTextMessage,
+              textMessage: v.textMessage ?? "",
+              buttons: v.buttons.length > 0
+                ? v.buttons.map((b) => ({
+                    text: b.text,
+                    value: String(b.value),
+                    useDefaultDelivery: b.useDefaultDelivery,
+                    customDeliveryUrl: b.customDeliveryUrl ?? "",
+                  }))
+                : [{ text: "", value: "", useDefaultDelivery: true, customDeliveryUrl: "" }],
             }))
-          : [{ text: "", value: "", useDefaultDelivery: true, customDeliveryUrl: "" }]
+          : [emptyVariant()]
       );
     }
   }, [remarketing]);
@@ -158,54 +452,94 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  // ── Flow buttons (for import) ──────────────────────────────────────────────
+  // ── Flow buttons ───────────────────────────────────────────────────────────
 
   const selectedFlow = flows.find((f) => f.id === flowId);
   const flowButtons = selectedFlow?.buttons ?? [];
 
-  function addFlowButton(b: typeof flowButtons[0]) {
-    setButtons((prev) => [
-      ...prev.filter((x) => x.text !== "" || x.value !== ""), // remove empty placeholder
-      { text: b.text, value: String(b.value), useDefaultDelivery: b.useDefaultDelivery, customDeliveryUrl: b.customDeliveryUrl ?? "" },
-    ]);
+  // ── Variant helpers ────────────────────────────────────────────────────────
+
+  function addVariant() {
+    setVariants((prev) => [...prev, emptyVariant()]);
+    setExpandedVariant(variants.length); // expand the new one
   }
 
-  function importAllFlowButtons() {
+  function removeVariant(vi: number) {
+    setVariants((prev) => prev.filter((_, i) => i !== vi));
+    setExpandedVariant(Math.max(0, expandedVariant >= vi ? expandedVariant - 1 : expandedVariant));
+  }
+
+  function updateVariant(vi: number, field: keyof Omit<VariantState, "buttons">, val: string | boolean) {
+    setVariants((prev) => prev.map((v, i) => i === vi ? { ...v, [field]: val } : v));
+  }
+
+  function addVariantButton(vi: number) {
+    setVariants((prev) => prev.map((v, i) =>
+      i === vi
+        ? { ...v, buttons: [...v.buttons, { text: "", value: "", useDefaultDelivery: true, customDeliveryUrl: "" }] }
+        : v
+    ));
+  }
+
+  function removeVariantButton(vi: number, bi: number) {
+    setVariants((prev) => prev.map((v, i) =>
+      i === vi ? { ...v, buttons: v.buttons.filter((_, idx) => idx !== bi) } : v
+    ));
+  }
+
+  function updateVariantButton(vi: number, bi: number, field: keyof Button, val: string | boolean) {
+    setVariants((prev) => prev.map((v, i) =>
+      i === vi
+        ? { ...v, buttons: v.buttons.map((b, idx) => idx === bi ? { ...b, [field]: val } : b) }
+        : v
+    ));
+  }
+
+  function addFlowButtonToVariant(vi: number, b: typeof flowButtons[0]) {
+    setVariants((prev) => prev.map((v, i) =>
+      i === vi
+        ? {
+            ...v,
+            buttons: [
+              ...v.buttons.filter((x) => x.text !== "" || x.value !== ""),
+              { text: b.text, value: String(b.value), useDefaultDelivery: b.useDefaultDelivery, customDeliveryUrl: b.customDeliveryUrl ?? "" },
+            ],
+          }
+        : v
+    ));
+  }
+
+  function importAllFlowButtonsToVariant(vi: number) {
     if (!flowButtons.length) { toast.error("O fluxo não tem planos cadastrados."); return; }
-    setButtons(flowButtons.map((b) => ({
-      text: b.text,
-      value: String(b.value),
-      useDefaultDelivery: b.useDefaultDelivery,
-      customDeliveryUrl: b.customDeliveryUrl ?? "",
-    })));
-    toast.success("Todos os planos importados!");
-  }
-
-  // ── Button helpers ─────────────────────────────────────────────────────────
-
-  function addButton() {
-    setButtons((p) => [...p, { text: "", value: "", useDefaultDelivery: true, customDeliveryUrl: "" }]);
-  }
-
-  function removeButton(i: number) {
-    setButtons((p) => p.filter((_, idx) => idx !== i));
-  }
-
-  function updateButton(i: number, field: keyof Button, val: string | boolean) {
-    setButtons((p) => p.map((b, idx) => (idx === i ? { ...b, [field]: val } : b)));
+    setVariants((prev) => prev.map((v, i) =>
+      i === vi
+        ? {
+            ...v,
+            buttons: flowButtons.map((b) => ({
+              text: b.text,
+              value: String(b.value),
+              useDefaultDelivery: b.useDefaultDelivery,
+              customDeliveryUrl: b.customDeliveryUrl ?? "",
+            })),
+          }
+        : v
+    ));
+    toast.success("Planos importados para a variante!");
   }
 
   // ── Submit ─────────────────────────────────────────────────────────────────
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim())   { toast.error("Informe o nome do remarketing na aba Geral."); return; }
-    if (!flowId)         { toast.error("Selecione um fluxo na aba Geral."); return; }
+    if (!name.trim()) { toast.error("Informe o nome do remarketing na aba Geral."); return; }
+    if (!flowId)       { toast.error("Selecione um fluxo na aba Geral."); return; }
+    if (variants.length === 0) { toast.error("Adicione pelo menos uma variante."); return; }
 
-    const validButtons = buttons.filter((b) => b.text.trim() && b.value !== "");
-    const anyUsesDefault = validButtons.some((b) => b.useDefaultDelivery);
+    const anyUsesDefault = variants.some((v) =>
+      v.buttons.some((b) => b.useDefaultDelivery && b.text.trim() && b.value !== "")
+    );
     if (anyUsesDefault && !defaultDeliveryUrl.trim()) {
-      toast.error("Informe o link de entrega padrão na aba Planos.");
+      toast.error("Informe o link de entrega padrão na aba Geral.");
       return;
     }
 
@@ -215,19 +549,24 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
       targetAudience,
       intervalMinutes,
       startAfterMinutes,
-      mediaUrl: mediaUrl || undefined,
-      mediaType: mediaUrl ? mediaType : undefined,
-      caption: caption.trim() || undefined,
-      useTextMessage,
-      textMessage: useTextMessage ? textMessage.trim() || undefined : undefined,
       defaultDeliveryUrl: defaultDeliveryUrl.trim() || undefined,
-      buttons: validButtons.map((b, i) => ({
-        text: b.text.trim(),
-        value: parseFloat(b.value),
-        order: i,
-        useDefaultDelivery: b.useDefaultDelivery,
-        customDeliveryUrl: b.useDefaultDelivery ? undefined : b.customDeliveryUrl.trim() || undefined,
-      })),
+      variants: variants.map((v) => {
+        const validButtons = v.buttons.filter((b) => b.text.trim() && b.value !== "");
+        return {
+          mediaUrl: v.mediaUrl || undefined,
+          mediaType: v.mediaUrl ? v.mediaType : undefined,
+          caption: v.caption.trim() || undefined,
+          useTextMessage: v.useTextMessage,
+          textMessage: v.useTextMessage ? v.textMessage.trim() || undefined : undefined,
+          buttons: validButtons.map((b, i) => ({
+            text: b.text.trim(),
+            value: parseFloat(b.value),
+            order: i,
+            useDefaultDelivery: b.useDefaultDelivery,
+            customDeliveryUrl: b.useDefaultDelivery ? undefined : b.customDeliveryUrl.trim() || undefined,
+          })),
+        };
+      }),
     };
 
     if (mode === "create") createMutation.mutate(payload);
@@ -245,6 +584,12 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  // Check if any button across all variants uses default delivery
+  const anyUsesDefault = variants.some((v) =>
+    v.buttons.some((b) => b.useDefaultDelivery && b.text.trim() && b.value !== "")
+  );
+  const missingDefaultUrl = anyUsesDefault && !defaultDeliveryUrl.trim();
 
   return (
     <div>
@@ -293,20 +638,19 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
               <Megaphone className="w-4 h-4 shrink-0" />
               <span className="hidden sm:inline">Geral</span>
             </TabsTrigger>
-            <TabsTrigger value="mensagem" className="flex-1 sm:flex-none px-2 sm:px-4">
+            <TabsTrigger value="variantes" className="flex-1 sm:flex-none px-2 sm:px-4">
               <GitBranch className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">Mensagem</span>
-            </TabsTrigger>
-            <TabsTrigger value="planos" className="flex-1 sm:flex-none px-2 sm:px-4">
-              <Layers className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">Planos</span>
+              <span className="hidden sm:inline">Variantes</span>
+              <span className="ml-1.5 text-xs font-bold bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center shrink-0">
+                {variants.length}
+              </span>
             </TabsTrigger>
           </TabsList>
 
           {/* ── GERAL ── */}
           <TabsContent value="geral">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-              {/* Left: name + flow */}
+              {/* Left column */}
               <div className="flex flex-col gap-4">
                 <div className="bg-surface rounded-2xl border border-border p-6">
                   <SectionLabel
@@ -354,20 +698,16 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
                 <div className="bg-surface rounded-2xl border border-border p-6">
                   <SectionLabel
                     label="Começar a enviar após"
-                    description="Tempo mínimo desde a ação do lead (início, PIX gerado ou compra) para ele ser elegível."
+                    description="Tempo mínimo desde a ação do lead para ele ser elegível."
                   />
                   <Select
                     value={String(startAfterMinutes)}
                     onValueChange={(v) => setStartAfterMinutes(Number(v))}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {INTERVAL_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={String(opt.value)}>
-                          {opt.label}
-                        </SelectItem>
+                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -382,17 +722,44 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
                     value={String(intervalMinutes)}
                     onValueChange={(v) => setIntervalMinutes(Number(v))}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {INTERVAL_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={String(opt.value)}>
-                          {opt.label}
-                        </SelectItem>
+                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Default delivery URL */}
+                <div className={cn(
+                  "bg-surface rounded-2xl border p-6 transition-colors",
+                  missingDefaultUrl ? "border-[oklch(65%_0.18_25)]" : "border-border"
+                )}>
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold text-text-strong">
+                      Entrega padrão
+                      {anyUsesDefault && <span className="ml-1 text-destructive">*</span>}
+                    </p>
+                    <p className="text-xs text-text-muted mt-0.5">
+                      Link enviado após o pagamento para planos sem link próprio.
+                    </p>
+                  </div>
+                  <input
+                    type="url"
+                    value={defaultDeliveryUrl}
+                    onChange={(e) => setDefaultDeliveryUrl(e.target.value)}
+                    placeholder="https://seu-link-de-entrega.com"
+                    className={cn(
+                      inputClass,
+                      missingDefaultUrl && "border-[oklch(65%_0.18_25)] focus:border-destructive focus:ring-destructive/20"
+                    )}
+                  />
+                  {missingDefaultUrl && (
+                    <p className="text-xs text-destructive mt-2">
+                      Obrigatório — um ou mais planos usam a entrega padrão.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -429,286 +796,45 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
             </div>
           </TabsContent>
 
-          {/* ── MENSAGEM ── */}
-          <TabsContent value="mensagem">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-              {/* Mídia */}
-              <div className="bg-surface rounded-2xl border border-border p-6">
-                <SectionLabel
-                  label="Mídia da mensagem"
-                  description="Imagem ou vídeo enviado com o remarketing. Opcional."
+          {/* ── VARIANTES ── */}
+          <TabsContent value="variantes">
+            <div className="flex flex-col gap-3">
+              {variants.length > 1 && (
+                <div className="bg-lilac-light border border-primary/20 rounded-xl px-4 py-3">
+                  <p className="text-sm text-primary font-medium">
+                    Rotação ativa — {variants.length} variantes serão enviadas em sequência (1 → 2 → ... → {variants.length} → 1)
+                  </p>
+                </div>
+              )}
+
+              {variants.map((variant, vi) => (
+                <VariantCard
+                  key={vi}
+                  index={vi}
+                  total={variants.length}
+                  variant={variant}
+                  expanded={expandedVariant === vi}
+                  onToggleExpand={() => setExpandedVariant(expandedVariant === vi ? -1 : vi)}
+                  onRemove={() => removeVariant(vi)}
+                  onUpdate={(field, val) => updateVariant(vi, field, val)}
+                  onUpdateButton={(bi, field, val) => updateVariantButton(vi, bi, field, val)}
+                  onAddButton={() => addVariantButton(vi)}
+                  onRemoveButton={(bi) => removeVariantButton(vi, bi)}
+                  flowButtons={flowButtons}
+                  onImportFlowButton={(b) => addFlowButtonToVariant(vi, b)}
+                  onImportAllFlowButtons={() => importAllFlowButtonsToVariant(vi)}
+                  flowId={flowId}
                 />
-                <MediaUpload
-                  value={mediaUrl}
-                  mediaType={mediaType}
-                  onChange={(url, type) => { setMediaUrl(url); setMediaType(type); }}
-                  onClear={() => setMediaUrl("")}
-                />
-              </div>
+              ))}
 
-              {/* Caption + texto separado */}
-              <div className="flex flex-col gap-4">
-                <div className="bg-surface rounded-2xl border border-border p-6">
-                  <SectionLabel
-                    label="Caption"
-                    description="Texto exibido junto à mídia."
-                  />
-                  <textarea
-                    value={caption}
-                    onChange={(e) => setCaption(e.target.value)}
-                    placeholder="Olá! Ainda tem interesse? Confira nossos planos 👇"
-                    rows={5}
-                    className={textareaClass}
-                  />
-                </div>
-
-                <div className="bg-surface rounded-2xl border border-border p-6">
-                  <div className="flex items-center justify-between gap-3 mb-0">
-                    <SectionLabel
-                      label="Mensagem separada para os botões"
-                      description={
-                        useTextMessage
-                          ? "Os botões serão enviados nesta mensagem."
-                          : "Os botões serão enviados junto ao caption da mídia."
-                      }
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setUseTextMessage((v) => !v)}
-                      className="shrink-0 mb-3"
-                    >
-                      {useTextMessage
-                        ? <ToggleRight className="w-9 h-9 text-primary" />
-                        : <ToggleLeft className="w-9 h-9 text-text-placeholder" />
-                      }
-                    </button>
-                  </div>
-
-                  <div className={cn(
-                    "overflow-hidden transition-all duration-300",
-                    useTextMessage ? "max-h-48 opacity-100" : "max-h-0 opacity-0"
-                  )}>
-                    <textarea
-                      value={textMessage}
-                      onChange={(e) => setTextMessage(e.target.value)}
-                      placeholder="Escolha um plano:"
-                      rows={3}
-                      className={textareaClass}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* ── PLANOS ── */}
-          <TabsContent value="planos">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-              {/* Buttons */}
-              <div className="bg-surface rounded-2xl border border-border p-6">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <SectionLabel
-                    label="Planos do remarketing"
-                    description="Planos que serão enviados neste remarketing. Adicione do fluxo ou crie novos."
-                  />
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  {buttons.map((btn, i) => (
-                    <div
-                      key={i}
-                      className="rounded-xl border border-border bg-surface-subtle p-3 flex flex-col gap-2"
-                    >
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <div className="flex items-center gap-2 flex-1">
-                          <div className="flex items-center justify-center shrink-0 w-7 h-7 rounded-full bg-lilac-light">
-                            <span className="text-xs font-bold text-primary">{i + 1}</span>
-                          </div>
-                          <input
-                            type="text"
-                            value={btn.text}
-                            onChange={(e) => updateButton(i, "text", e.target.value)}
-                            placeholder="Nome do plano"
-                            className={cn(inputClass, "flex-1 min-w-0")}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeButton(i)}
-                            disabled={buttons.length === 1}
-                            className="sm:hidden h-10 w-10 flex items-center justify-center rounded-lg text-text-muted hover:bg-red-50 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-2 pl-9 sm:pl-0">
-                          <div className="relative flex-1 sm:flex-none sm:w-28 shrink-0">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-primary pointer-events-none">
-                              R$
-                            </span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={btn.value}
-                              onChange={(e) => updateButton(i, "value", e.target.value)}
-                              placeholder="0,00"
-                              className={cn(
-                                inputClass,
-                                "pl-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              )}
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeButton(i)}
-                            disabled={buttons.length === 1}
-                            className="hidden sm:flex h-10 w-10 items-center justify-center rounded-lg text-text-muted hover:bg-red-50 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="pl-0 sm:pl-9 flex flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={() => updateButton(i, "useDefaultDelivery", !btn.useDefaultDelivery)}
-                          className="flex items-center gap-2 self-start"
-                        >
-                          {btn.useDefaultDelivery
-                            ? <ToggleRight className="w-7 h-7 text-primary" />
-                            : <ToggleLeft className="w-7 h-7 text-text-placeholder" />
-                          }
-                          <span className="text-xs font-medium text-text-label">Usar entrega padrão</span>
-                        </button>
-                        {!btn.useDefaultDelivery && (
-                          <input
-                            type="url"
-                            value={btn.customDeliveryUrl}
-                            onChange={(e) => updateButton(i, "customDeliveryUrl", e.target.value)}
-                            placeholder="https://seu-link-de-entrega.com"
-                            className={inputClass}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={addButton}
-                  className="mt-4 flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary-hover transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Adicionar plano
-                </button>
-              </div>
-
-              {/* Right column */}
-              <div className="flex flex-col gap-4">
-
-                {/* Flow plans reference */}
-                {flowId && (
-                  <div className="bg-surface rounded-2xl border border-border p-6">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <SectionLabel
-                        label="Planos do fluxo"
-                        description="Clique em + para adicionar ao remarketing."
-                      />
-                      {flowButtons.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={importAllFlowButtons}
-                          className="shrink-0 h-8 px-3 rounded-lg text-xs font-medium border border-border text-text-label hover:border-border-medium transition-colors whitespace-nowrap"
-                        >
-                          Adicionar todos
-                        </button>
-                      )}
-                    </div>
-
-                    {flowButtons.length === 0 ? (
-                      <p className="text-xs text-text-muted">Este fluxo não tem planos cadastrados.</p>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        {flowButtons.map((b) => (
-                          <div
-                            key={b.id}
-                            className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-surface-subtle border border-border"
-                          >
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">{b.text}</p>
-                              <p className="text-xs text-text-muted">
-                                R$ {b.value.toFixed(2).replace(".", ",")}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => addFlowButton(b)}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-lilac-light transition-colors shrink-0"
-                              title="Adicionar ao remarketing"
-                            >
-                              <PackagePlus className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {!flowId && (
-                  <div className="bg-surface rounded-2xl border border-dashed border-border p-6 flex flex-col items-center text-center">
-                    <PackagePlus className="w-8 h-8 text-text-muted mb-2 opacity-40" />
-                    <p className="text-sm text-text-muted">
-                      Selecione um fluxo na aba <strong>Geral</strong> para ver e importar seus planos.
-                    </p>
-                  </div>
-                )}
-
-                {/* Default delivery */}
-                {(() => {
-                  const anyUsesDefault = buttons.some((b) => b.useDefaultDelivery);
-                  const missing = anyUsesDefault && !defaultDeliveryUrl.trim();
-                  return (
-                    <div className={cn(
-                      "bg-surface rounded-2xl border p-6 transition-colors",
-                      missing ? "border-[oklch(65%_0.18_25)]" : "border-border"
-                    )}>
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <div>
-                          <p className="text-sm font-semibold text-text-strong">
-                            Entrega padrão
-                            {anyUsesDefault && <span className="ml-1 text-destructive">*</span>}
-                          </p>
-                          <p className="text-xs text-text-muted mt-0.5">
-                            Link enviado automaticamente após o pagamento ser aprovado.
-                          </p>
-                        </div>
-                      </div>
-                      <input
-                        type="url"
-                        value={defaultDeliveryUrl}
-                        onChange={(e) => setDefaultDeliveryUrl(e.target.value)}
-                        placeholder="https://seu-link-de-entrega.com"
-                        className={cn(
-                          inputClass,
-                          missing && "border-[oklch(65%_0.18_25)] focus:border-destructive focus:ring-destructive/20"
-                        )}
-                      />
-                      {missing ? (
-                        <p className="text-xs text-destructive mt-2">
-                          Obrigatório — um ou mais planos usam a entrega padrão.
-                        </p>
-                      ) : (
-                        <p className="text-xs text-text-muted mt-2">
-                          Planos sem link próprio usarão este link.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
+              <button
+                type="button"
+                onClick={addVariant}
+                className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary-hover transition-colors mt-1"
+              >
+                <Plus className="w-4 h-4" />
+                Adicionar variante
+              </button>
             </div>
           </TabsContent>
         </Tabs>

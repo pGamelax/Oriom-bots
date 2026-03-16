@@ -67,28 +67,37 @@ model Bot {
 }
 
 model Remarketing {
-  id                 String              @id @default(cuid())
-  userId             String
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  flowId             String
-  flow               Flow                @relation(fields: [flowId], references: [id], onDelete: Cascade)
-  name               String
-  active             Boolean             @default(true)
-  targetAudience     String              // "all" | "new" | "pending" | "paid"
-  intervalMinutes    Int                 @default(60)   // how often the scheduler fires
-  startAfterMinutes  Int                 @default(20)   // min time from lead action before eligible
-  mediaUrl           String?
-  mediaType          String?
-  caption            String?
-  useTextMessage     Boolean             @default(false)
-  textMessage        String?             @db.Text
-  defaultDeliveryUrl String?
-  buttons            RemarketingButton[]
-  logs               RemarketingLog[]
-  payments           Payment[]
-  lastRunAt          DateTime?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  id                  String               @id @default(cuid())
+  userId              String
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flowId              String
+  flow                Flow                 @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  name                String
+  active              Boolean              @default(true)
+  targetAudience      String               // "all" | "new" | "pending" | "paid"
+  intervalMinutes     Int                  @default(60)
+  startAfterMinutes   Int                  @default(20)
+  defaultDeliveryUrl  String?
+  currentVariantIndex Int                  @default(0)
+  variants            RemarketingVariant[]
+  logs                RemarketingLog[]
+  payments            Payment[]
+  lastRunAt           DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model RemarketingVariant {
+  id             String              @id @default(cuid())
+  remarketingId  String
+  remarketing    Remarketing         @relation(fields: [remarketingId], references: [id], onDelete: Cascade)
+  order          Int                 @default(0)
+  mediaUrl       String?
+  mediaType      String?
+  caption        String?
+  useTextMessage Boolean             @default(false)
+  textMessage    String?             @db.Text
+  buttons        RemarketingButton[]
 }
 
 model RemarketingLog {
@@ -102,13 +111,13 @@ model RemarketingLog {
 }
 
 model RemarketingButton {
-  id                 String      @id @default(cuid())
-  remarketingId      String
-  remarketing        Remarketing @relation(fields: [remarketingId], references: [id], onDelete: Cascade)
+  id                 String             @id @default(cuid())
+  variantId          String
+  variant            RemarketingVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
   text               String
   value              Float
-  order              Int         @default(0)
-  useDefaultDelivery Boolean     @default(true)
+  order              Int                @default(0)
+  useDefaultDelivery Boolean            @default(true)
   customDeliveryUrl  String?
 }
 
