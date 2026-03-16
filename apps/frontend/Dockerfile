@@ -13,21 +13,13 @@ RUN npm install --ignore-scripts
 COPY . .
 RUN npm run build
 
-# ── Serve stage (nginx) ────────────────────────────────────────────────────────
-FROM nginx:1.27-alpine
+# ── Serve stage (caddy) ────────────────────────────────────────────────────────
+FROM caddy:2-alpine
 
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# SPA routing: todas as rotas desconhecidas retornam index.html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY nginx-main.conf /etc/nginx/nginx.conf
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-
-RUN chmod +x /docker-entrypoint.sh
+COPY --from=builder /app/dist /srv
+COPY Caddyfile /etc/caddy/Caddyfile
 
 EXPOSE 80
-
-CMD ["/docker-entrypoint.sh"]
