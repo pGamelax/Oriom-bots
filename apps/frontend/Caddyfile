@@ -9,5 +9,9 @@
         root * /srv
         try_files {path} /index.html
         file_server
+
+        # index.html nunca deve ser cacheado (SPA entry point)
+        @html path *.html /
+        header @html Cache-Control "no-cache, no-store, must-revalidate"
     }
 }
