@@ -1,9 +1,13 @@
 :80 {
-    # Proxy /api/* para o backend (usa env var nativamente)
-    reverse_proxy /api/* {$VITE_API_URL}
+    # Rotas de API vão para o backend
+    handle /api/* {
+        reverse_proxy {$VITE_API_URL}
+    }
 
-    # Servir arquivos estáticos com fallback SPA
-    root * /srv
-    file_server
-    try_files {path} /index.html
+    # Todo o resto serve os arquivos estáticos com fallback SPA
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
 }
