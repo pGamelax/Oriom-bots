@@ -5,7 +5,7 @@ import { leadsApi, botsApi, flowsApi, type LeadFilters } from "@/lib/api";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Users, TrendingUp, Clock, CheckCircle, Ban, Search, Calendar } from "lucide-react";
+import { Users, TrendingUp, Clock, CheckCircle, Ban, Search, Calendar, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_auth/clients/")({
@@ -133,6 +133,11 @@ function ClientsPage() {
     return f.name || (f.caption.length > 30 ? f.caption.slice(0, 30) + "…" : f.caption);
   }
 
+  function telegramChatUrl(lead: (typeof leads)[0]) {
+    if (lead.username) return `https://t.me/${lead.username}`;
+    return `tg://user?id=${lead.telegramId}`;
+  }
+
   return (
     <div>
       {/* Header */}
@@ -237,7 +242,7 @@ function ClientsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-subtle">
-                {["Nome", "Plano", "Bot", "Fluxo", "Status", "Data"].map((h) => (
+                {["Nome", "Plano", "Bot", "Fluxo", "Status", "Data", ""].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-text-label uppercase tracking-wide whitespace-nowrap">
                     {h}
                   </th>
@@ -246,11 +251,11 @@ function ClientsPage() {
             </thead>
             <tbody>
               {leadsLoading && (
-                <tr><td colSpan={6} className="text-center py-12 text-text-muted">Carregando...</td></tr>
+                <tr><td colSpan={7} className="text-center py-12 text-text-muted">Carregando...</td></tr>
               )}
               {!leadsLoading && leads.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-12">
+                  <td colSpan={7} className="text-center py-12">
                     <Users className="w-8 h-8 text-text-placeholder mx-auto mb-2" />
                     <p className="text-sm text-text-muted">Nenhum cliente encontrado</p>
                   </td>
@@ -305,6 +310,18 @@ function ClientsPage() {
                   <td className="px-4 py-3">
                     <span className="text-xs text-text-muted whitespace-nowrap">{formatDate(lead.startedAt)}</span>
                   </td>
+                  <td className="px-4 py-3">
+                    <a
+                      href={telegramChatUrl(lead)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Ver chat no Telegram"
+                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-200 whitespace-nowrap"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      Chat
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -341,7 +358,18 @@ function ClientsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <p className="font-medium text-text-strong truncate">{displayName(lead)}</p>
-                  <StatusBadge status={lead.status} />
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <StatusBadge status={lead.status} />
+                    <a
+                      href={telegramChatUrl(lead)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Ver chat no Telegram"
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-200"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-text-muted">
