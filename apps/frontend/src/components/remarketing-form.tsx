@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, ChevronDown, ChevronUp, GitBranch, Layers, Loader2,
+  ArrowLeft, ChevronDown, ChevronUp, GitBranch, Loader2,
   Megaphone, Plus, ToggleLeft, ToggleRight, Trash2, PackagePlus,
 } from "lucide-react";
 import { flowsApi, remarketingsApi, type RemarketingPayload } from "@/lib/api";
@@ -101,7 +101,7 @@ interface VariantCardProps {
   onAddButton: () => void;
   onRemoveButton: (bi: number) => void;
   flowButtons: { id: string; text: string; value: number; useDefaultDelivery: boolean; customDeliveryUrl: string | null }[];
-  onImportFlowButton: (b: { text: string; value: number; useDefaultDelivery: boolean; customDeliveryUrl: string | null }) => void;
+  onImportFlowButton: (b: { id: string; text: string; value: number; order: number; useDefaultDelivery: boolean; customDeliveryUrl: string | null }) => void;
   onImportAllFlowButtons: () => void;
   flowId: string;
 }

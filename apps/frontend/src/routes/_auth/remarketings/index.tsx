@@ -302,8 +302,8 @@ function RemarketingCard({
           </span>
           <span className="flex items-center gap-1">
             <Users className="w-3.5 h-3.5" />
-            {remarketing.buttons.length} plano
-            {remarketing.buttons.length !== 1 ? "s" : ""}
+            {remarketing.variants.reduce((s, v) => s + v.buttons.length, 0)} plano
+            {remarketing.variants.reduce((s, v) => s + v.buttons.length, 0) !== 1 ? "s" : ""}
           </span>
           <span>Último envio: {formatLastRun(remarketing.lastRunAt)}</span>
           {remarketing.paymentStats.revenueInCents > 0 && (
