@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Blob orgânico -->
+  <path d="
+    M100,8
+    C130,4 158,18 168,48
+    C180,82 172,110 160,132
+    C148,155 128,168 100,170
+    C72,172 50,158 36,136
+    C20,112 16,84 26,52
+    C36,20 68,12 100,8
+    Z
+  " fill="#c1341a"/>
+
+  <!-- Olhos -->
+  <ellipse cx="78" cy="90" rx="14" ry="10" fill="#fff" opacity="0.9"/>
+  <ellipse cx="122" cy="90" rx="14" ry="10" fill="#fff" opacity="0.9"/>
+
+  <!-- Pupilas -->
+  <circle cx="80" cy="91" r="5" fill="#c1341a"/>
+  <circle cx="124" cy="91" r="5" fill="#c1341a"/>
+
+  <!-- Brilho olhos -->
+  <circle cx="83" cy="88" r="2" fill="#fff"/>
+  <circle cx="127" cy="88" r="2" fill="#fff"/>
+
+  <!-- Boca: arco suave -->
+  <path d="M82,112 Q100,126 118,112" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- Antena -->
+  <line x1="100" y1="30" x2="100" y2="8" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+  <circle cx="100" cy="24" r="10" fill="#fff" opacity="0.9"/>
+  <circle cx="100" cy="24" r="5" fill="#c1341a"/>
+</svg>

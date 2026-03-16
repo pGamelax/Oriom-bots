@@ -1,0 +1,54 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: oriom-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: oriom
+      POSTGRES_PASSWORD: oriom123
+      POSTGRES_DB: oriom_bots
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oriom -d oriom_bots"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: oriom-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://oriom:oriom123@postgres:5432/oriom_bots
+      PORT: 3000
+      # Preencha as variáveis abaixo no seu .env ou direto aqui:
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      APP_URL: ${APP_URL}
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+      args:
+        # URL do backend que o browser vai usar (ex: https://api.seudominio.com)
+        VITE_API_URL: ${VITE_API_URL}
+    container_name: oriom-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:

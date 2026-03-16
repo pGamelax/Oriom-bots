@@ -1,0 +1,1 @@
+ALTER TABLE "Remarketing" ADD COLUMN "startAfterMinutes" INTEGER NOT NULL DEFAULT 20;

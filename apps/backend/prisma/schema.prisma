@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+model Bot {
+  id        String    @id @default(cuid())
+  name      String
+  username  String
+  token     String    @unique
+  active    Boolean   @default(true)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flow      Flow?
+  leads     Lead[]
+  payments  Payment[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Remarketing {
+  id                 String              @id @default(cuid())
+  userId             String
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flowId             String
+  flow               Flow                @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  name               String
+  active             Boolean             @default(true)
+  targetAudience     String              // "all" | "new" | "pending" | "paid"
+  intervalMinutes    Int                 @default(60)   // how often the scheduler fires
+  startAfterMinutes  Int                 @default(20)   // min time from lead action before eligible
+  mediaUrl           String?
+  mediaType          String?
+  caption            String?
+  useTextMessage     Boolean             @default(false)
+  textMessage        String?             @db.Text
+  defaultDeliveryUrl String?
+  buttons            RemarketingButton[]
+  logs               RemarketingLog[]
+  payments           Payment[]
+  lastRunAt          DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+model RemarketingLog {
+  id            String      @id @default(cuid())
+  remarketingId String
+  remarketing   Remarketing @relation(fields: [remarketingId], references: [id], onDelete: Cascade)
+  startedAt     DateTime    @default(now())
+  finishedAt    DateTime?
+  sent          Int         @default(0)
+  blocked       Int         @default(0)
+}
+
+model RemarketingButton {
+  id                 String      @id @default(cuid())
+  remarketingId      String
+  remarketing        Remarketing @relation(fields: [remarketingId], references: [id], onDelete: Cascade)
+  text               String
+  value              Float
+  order              Int         @default(0)
+  useDefaultDelivery Boolean     @default(true)
+  customDeliveryUrl  String?
+}
+
+model Flow {
+  id                 String          @id @default(cuid())
+  botId              String          @unique
+  bot                Bot             @relation(fields: [botId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String?
+  mediaUrl           String
+  mediaType          String
+  caption            String
+  useTextMessage     Boolean         @default(false)
+  textMessage        String?
+  defaultDeliveryUrl String?
+  pixQrCaption       String?
+  pixHowToPay        String?
+  pixCopyLabel       String?
+  pixAfterLabel      String?
+  buttons            FlowButton[]
+  gateways           GatewayOnFlow[]
+  pixels             PixelOnFlow[]
+  leads              Lead[]
+  payments           Payment[]
+  remarketings       Remarketing[]
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+}
+
+model FlowButton {
+  id                 String  @id @default(cuid())
+  flowId             String
+  flow               Flow    @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  text               String
+  value              Float
+  order              Int     @default(0)
+  useDefaultDelivery Boolean @default(true)
+  customDeliveryUrl  String?
+}
+
+model Gateway {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  type      String
+  apiKey    String
+  apiSecret String
+  scope     String          @default("global")
+  order     Int             @default(0)
+  active    Boolean         @default(true)
+  flows     GatewayOnFlow[]
+  payments  Payment[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model GatewayOnFlow {
+  gatewayId String
+  gateway   Gateway @relation(fields: [gatewayId], references: [id], onDelete: Cascade)
+  flowId    String
+  flow      Flow    @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  @@id([gatewayId, flowId])
+}
+
+model ClickToken {
+  id        String    @id @default(cuid())
+  token     String    @unique @default(cuid())
+  botId     String?
+  fbc       String?
+  fbp       String?
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  telegramId String
+  name       String?
+  username   String?
+  botId      String
+  bot        Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  flowId     String?
+  flow       Flow?    @relation(fields: [flowId], references: [id], onDelete: SetNull)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status     String   @default("new")
+  planName   String?
+  planValue  Float?
+  fbc        String?
+  fbp        String?
+  startedAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([telegramId, botId])
+}
+
+model Payment {
+  id              String       @id @default(cuid())
+  externalId      String?
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gatewayId       String?
+  gateway         Gateway?     @relation(fields: [gatewayId], references: [id], onDelete: SetNull)
+  botId           String
+  bot             Bot          @relation(fields: [botId], references: [id], onDelete: Cascade)
+  flowId          String?
+  flow            Flow?        @relation(fields: [flowId], references: [id], onDelete: SetNull)
+  remarketingId   String?
+  remarketing     Remarketing? @relation(fields: [remarketingId], references: [id], onDelete: SetNull)
+  telegramId      String
+  telegramName    String?
+  planName        String?
+  amountInCents   Int
+  status          String       @default("pending")
+  pixCode         String       @db.Text
+  paidAt          DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model Pixel {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  pixelId       String
+  accessToken   String        @db.Text
+  testEventCode String?
+  scope         String        @default("global")
+  active        Boolean       @default(true)
+  flows         PixelOnFlow[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model PixelOnFlow {
+  pixelId String
+  pixel   Pixel  @relation(fields: [pixelId], references: [id], onDelete: Cascade)
+  flowId  String
+  flow    Flow   @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  @@id([pixelId, flowId])
+}
+
+model User {
+  id            String        @id
+  name          String
+  email         String        @unique
+  emailVerified Boolean       @default(false)
+  image         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  bots          Bot[]
+  flows         Flow[]
+  gateways      Gateway[]
+  pixels        Pixel[]
+  leads         Lead[]
+  payments      Payment[]
+  remarketings  Remarketing[]
+}
