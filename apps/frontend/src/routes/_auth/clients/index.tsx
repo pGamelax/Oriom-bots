@@ -5,7 +5,7 @@ import { leadsApi, botsApi, flowsApi, type LeadFilters, type Lead, type ChatMess
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Users, TrendingUp, Clock, CheckCircle, Ban, Search, Calendar, MessageSquare, X, RefreshCw, Bot, Image, Video, Smile } from "lucide-react";
+import { Users, TrendingUp, Clock, CheckCircle, Ban, Search, Calendar, MessageSquare, X, RefreshCw, Bot, Image, Video, Smile, MousePointerClick } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_auth/clients/")({
@@ -87,7 +87,21 @@ function StatCard({ label, value, icon: Icon, color }: {
 
 function ChatBubble({ msg }: { msg: ChatMessage }) {
   const isBot = msg.from === "bot";
+  const isCallback = msg.type === "callback";
   const time = new Date(msg.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  // Callback actions rendered as a centered pill, not a bubble
+  if (isCallback) {
+    return (
+      <div className="flex items-center justify-center gap-2 my-1">
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium">
+          <MousePointerClick className="w-3 h-3 shrink-0" />
+          {msg.text}
+          <span className="text-amber-400 font-normal ml-1">{time}</span>
+        </div>
+      </div>
+    );
+  }
 
   function content() {
     if (msg.type === "photo") return (

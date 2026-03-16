@@ -17,7 +17,7 @@ export function getActiveBot(botId: string): Bot | undefined {
 
 export type ChatMessage = {
   from: "user" | "bot";
-  type: "text" | "photo" | "video" | "sticker" | "other";
+  type: "text" | "photo" | "video" | "sticker" | "callback" | "other";
   text?: string;
   caption?: string;
   mediaUrl?: string;
@@ -419,17 +419,41 @@ export async function startBot(botId: string, token: string) {
 
   // ── Capture incoming user messages (middleware) ───────────────────────────
   bot.use(async (ctx, next) => {
-    if (ctx.message && ctx.from) {
+    if (ctx.from) {
       const telegramId = String(ctx.from.id);
-      const msg = ctx.message;
-      let type: ChatMessage["type"] = "other";
-      let text: string | undefined;
-      let mediaUrl: string | undefined;
-      if (msg.text) { type = "text"; text = msg.text; }
-      else if (msg.photo) { type = "photo"; text = msg.caption; }
-      else if (msg.video) { type = "video"; text = msg.caption; }
-      else if (msg.sticker) { type = "sticker"; text = msg.sticker.emoji; }
-      pushMessage(botId, telegramId, { from: "user", type, text, mediaUrl, timestamp: Date.now() });
+
+      if (ctx.message) {
+        const msg = ctx.message;
+        let type: ChatMessage["type"] = "other";
+        let text: string | undefined;
+        let mediaUrl: string | undefined;
+        if (msg.text) { type = "text"; text = msg.text; }
+        else if (msg.photo) { type = "photo"; text = msg.caption; }
+        else if (msg.video) { type = "video"; text = msg.caption; }
+        else if (msg.sticker) { type = "sticker"; text = msg.sticker.emoji; }
+        pushMessage(botId, telegramId, { from: "user", type, text, mediaUrl, timestamp: Date.now() });
+      }
+
+      if (ctx.callbackQuery?.data) {
+        const data = ctx.callbackQuery.data;
+        let label: string;
+        if (data.startsWith("pay:")) {
+          const value = parseFloat(data.split(":")[1]);
+          label = isNaN(value) ? "Selecionou plano" : `Selecionou plano R$ ${value.toFixed(2).replace(".", ",")}`;
+        } else if (data.startsWith("rmkt:")) {
+          const value = parseFloat(data.split(":")[1]);
+          label = isNaN(value) ? "Selecionou plano (remarketing)" : `Selecionou plano R$ ${value.toFixed(2).replace(".", ",")} (remarketing)`;
+        } else if (data.startsWith("verify:")) {
+          label = "Verificou status do pagamento";
+        } else if (data.startsWith("copy:")) {
+          label = "Copiou código PIX";
+        } else if (data.startsWith("qr:")) {
+          label = "Solicitou QR Code";
+        } else {
+          label = data;
+        }
+        pushMessage(botId, telegramId, { from: "user", type: "callback", text: label, timestamp: Date.now() });
+      }
     }
     await next();
   });

@@ -227,7 +227,7 @@ export const paymentsApi = {
 
 export interface ChatMessage {
   from: "user" | "bot";
-  type: "text" | "photo" | "video" | "sticker" | "other";
+  type: "text" | "photo" | "video" | "sticker" | "callback" | "other";
   text?: string;
   caption?: string;
   mediaUrl?: string;
