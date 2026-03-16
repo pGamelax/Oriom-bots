@@ -101,7 +101,7 @@ interface VariantCardProps {
   onAddButton: () => void;
   onRemoveButton: (bi: number) => void;
   flowButtons: { id: string; text: string; value: number; useDefaultDelivery: boolean; customDeliveryUrl: string | null }[];
-  onImportFlowButton: (b: { id: string; text: string; value: number; order: number; useDefaultDelivery: boolean; customDeliveryUrl: string | null }) => void;
+  onImportFlowButton: (b: { id: string; text: string; value: number; useDefaultDelivery: boolean; customDeliveryUrl: string | null }) => void;
   onImportAllFlowButtons: () => void;
   flowId: string;
 }
@@ -495,7 +495,7 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
     ));
   }
 
-  function addFlowButtonToVariant(vi: number, b: typeof flowButtons[0]) {
+  function addFlowButtonToVariant(vi: number, b: { text: string; value: number; useDefaultDelivery: boolean; customDeliveryUrl: string | null }) {
     setVariants((prev) => prev.map((v, i) =>
       i === vi
         ? {
