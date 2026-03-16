@@ -16,6 +16,9 @@ RUN npm run build
 # ── Serve stage (nginx) ────────────────────────────────────────────────────────
 FROM nginx:1.27-alpine
 
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # SPA routing: todas as rotas desconhecidas retornam index.html
