@@ -225,6 +225,15 @@ export const paymentsApi = {
   },
 };
 
+export interface ChatMessage {
+  from: "user" | "bot";
+  type: "text" | "photo" | "video" | "sticker" | "other";
+  text?: string;
+  caption?: string;
+  mediaUrl?: string;
+  timestamp: number;
+}
+
 export const leadsApi = {
   list: (filters?: LeadFilters) => {
     const p = new URLSearchParams();
@@ -244,6 +253,8 @@ export const leadsApi = {
     const qs = p.toString();
     return request<LeadStats>(`/api/leads/stats${qs ? "?" + qs : ""}`);
   },
+  chat: (botId: string, telegramId: string) =>
+    request<ChatMessage[]>(`/api/leads/chat?botId=${botId}&telegramId=${telegramId}`),
 };
 
 export interface PixelFlow {

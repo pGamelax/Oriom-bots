@@ -1,6 +1,7 @@
 import Elysia, { t } from "elysia";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { auth } from "../lib/auth.js";
+import { getChatHistory } from "../services/bot-manager.js";
 
 const prisma = new PrismaClient();
 
@@ -78,6 +79,27 @@ export const leadsRoutes = new Elysia({ prefix: "/api/leads" })
         flowId: t.Optional(t.String()),
         from: t.Optional(t.String()),
         to: t.Optional(t.String()),
+      }),
+    }
+  )
+  .get(
+    "/chat",
+    async ({ session, set, query }) => {
+      if (!session?.user) { set.status = 401; return { error: "Unauthorized" }; }
+
+      // Verify the lead belongs to this user
+      const lead = await prisma.lead.findFirst({
+        where: { telegramId: query.telegramId, botId: query.botId, userId: session.user.id },
+        select: { id: true },
+      });
+      if (!lead) { set.status = 404; return { error: "Lead not found" }; }
+
+      return getChatHistory(query.botId, query.telegramId);
+    },
+    {
+      query: t.Object({
+        botId: t.String(),
+        telegramId: t.String(),
       }),
     }
   );

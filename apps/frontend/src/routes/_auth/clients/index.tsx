@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { leadsApi, botsApi, flowsApi, type LeadFilters } from "@/lib/api";
+import { leadsApi, botsApi, flowsApi, type LeadFilters, type Lead, type ChatMessage } from "@/lib/api";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Users, TrendingUp, Clock, CheckCircle, Ban, Search, Calendar, MessageSquare } from "lucide-react";
+import { Users, TrendingUp, Clock, CheckCircle, Ban, Search, Calendar, MessageSquare, X, RefreshCw, Bot, Image, Video, Smile } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_auth/clients/")({
@@ -83,6 +83,127 @@ function StatCard({ label, value, icon: Icon, color }: {
   );
 }
 
+// ── Chat Dialog ───────────────────────────────────────────────────────────
+
+function ChatBubble({ msg }: { msg: ChatMessage }) {
+  const isBot = msg.from === "bot";
+  const time = new Date(msg.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  function content() {
+    if (msg.type === "photo") return (
+      <span className="flex items-center gap-1.5 italic opacity-80"><Image className="w-3.5 h-3.5 shrink-0" />{msg.caption || "Foto"}</span>
+    );
+    if (msg.type === "video") return (
+      <span className="flex items-center gap-1.5 italic opacity-80"><Video className="w-3.5 h-3.5 shrink-0" />{msg.caption || "Vídeo"}</span>
+    );
+    if (msg.type === "sticker") return (
+      <span className="flex items-center gap-1.5 italic opacity-80"><Smile className="w-3.5 h-3.5 shrink-0" />{msg.text || "Sticker"}</span>
+    );
+    return <span className="whitespace-pre-wrap">{msg.text}</span>;
+  }
+
+  return (
+    <div className={cn("flex gap-2 items-end", isBot ? "flex-row" : "flex-row-reverse")}>
+      {isBot && (
+        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mb-0.5">
+          <Bot className="w-3.5 h-3.5 text-primary" />
+        </div>
+      )}
+      <div
+        className={cn(
+          "max-w-[75%] px-3 py-2 rounded-2xl text-sm leading-relaxed",
+          isBot
+            ? "bg-surface border border-border text-foreground rounded-bl-sm"
+            : "bg-primary text-white rounded-br-sm"
+        )}
+      >
+        {content()}
+        <p className={cn("text-[10px] mt-1 text-right", isBot ? "text-text-muted" : "text-white/60")}>{time}</p>
+      </div>
+    </div>
+  );
+}
+
+function ChatDialog({ lead, onClose }: { lead: Lead; onClose: () => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { data: messages = [], isLoading, refetch, isFetching } = useQuery({
+    queryKey: ["chat", lead.botId, lead.telegramId],
+    queryFn: () => leadsApi.chat(lead.botId, lead.telegramId),
+    refetchInterval: 5000,
+  });
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Close on backdrop click
+  function handleBackdrop(e: React.MouseEvent) {
+    if (e.target === e.currentTarget) onClose();
+  }
+
+  const displayName = lead.name ?? (lead.username ? `@${lead.username}` : `#${lead.telegramId}`);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
+      onClick={handleBackdrop}
+    >
+      <div className="bg-background w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl flex flex-col shadow-2xl border border-border max-h-[85dvh] sm:max-h-[80vh]">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+          <div className="w-9 h-9 rounded-full bg-lilac-light flex items-center justify-center shrink-0">
+            <span className="text-sm font-bold text-primary">{displayName[0]?.toUpperCase()}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-foreground truncate">{displayName}</p>
+            <p className="text-xs text-text-muted">@{lead.bot.username}</p>
+          </div>
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-surface-raised transition-colors"
+          >
+            <RefreshCw className={cn("w-4 h-4", isFetching && "animate-spin")} />
+          </button>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-surface-raised transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 min-h-0">
+          {isLoading && (
+            <div className="flex-1 flex items-center justify-center">
+              <RefreshCw className="w-5 h-5 animate-spin text-text-muted" />
+            </div>
+          )}
+          {!isLoading && messages.length === 0 && (
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center py-8">
+              <MessageSquare className="w-8 h-8 text-text-placeholder" />
+              <p className="text-sm text-text-muted">Nenhuma mensagem ainda</p>
+              <p className="text-xs text-text-subtle">As mensagens aparecem aqui em tempo real após o usuário interagir com o bot</p>
+            </div>
+          )}
+          {messages.map((msg, i) => (
+            <ChatBubble key={i} msg={msg} />
+          ))}
+        </div>
+
+        {/* Footer note */}
+        <div className="px-4 py-2.5 border-t border-border-subtle shrink-0">
+          <p className="text-[11px] text-text-subtle text-center">Histórico em memória · Atualiza a cada 5s</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 
 function ClientsPage() {
@@ -91,6 +212,7 @@ function ClientsPage() {
   const [statusFilter, setStatusFilter] = useState("__all__");
   const [botFilter, setBotFilter] = useState("__all__");
   const [flowFilter, setFlowFilter] = useState("__all__");
+  const [chatLead, setChatLead] = useState<Lead | null>(null);
 
   const dateParams = useMemo(() => getDateRange(dateRange), [dateRange]);
 
@@ -133,12 +255,9 @@ function ClientsPage() {
     return f.name || (f.caption.length > 30 ? f.caption.slice(0, 30) + "…" : f.caption);
   }
 
-  function telegramChatUrl(lead: (typeof leads)[0]) {
-    if (lead.username) return `https://t.me/${lead.username}`;
-    return `tg://user?id=${lead.telegramId}`;
-  }
-
   return (
+    <>
+    {chatLead && <ChatDialog lead={chatLead} onClose={() => setChatLead(null)} />}
     <div>
       {/* Header */}
       <div className="mb-5">
@@ -311,16 +430,13 @@ function ClientsPage() {
                     <span className="text-xs text-text-muted whitespace-nowrap">{formatDate(lead.startedAt)}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <a
-                      href={telegramChatUrl(lead)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Ver chat no Telegram"
+                    <button
+                      onClick={() => setChatLead(lead)}
                       className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-200 whitespace-nowrap"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
                       Chat
-                    </a>
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -360,15 +476,12 @@ function ClientsPage() {
                   <p className="font-medium text-text-strong truncate">{displayName(lead)}</p>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <StatusBadge status={lead.status} />
-                    <a
-                      href={telegramChatUrl(lead)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Ver chat no Telegram"
+                    <button
+                      onClick={() => setChatLead(lead)}
                       className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-200"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
-                    </a>
+                    </button>
                   </div>
                 </div>
 
@@ -398,5 +511,6 @@ function ClientsPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

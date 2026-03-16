@@ -13,6 +13,33 @@ export function getActiveBot(botId: string): Bot | undefined {
   return activeBots.get(botId);
 }
 
+// ── In-memory chat history (no DB) ──────────────────────────────────────────
+
+export type ChatMessage = {
+  from: "user" | "bot";
+  type: "text" | "photo" | "video" | "sticker" | "other";
+  text?: string;
+  caption?: string;
+  mediaUrl?: string;
+  timestamp: number;
+};
+
+const MAX_MESSAGES_PER_CHAT = 200;
+// key: `${botId}:${telegramId}`
+const chatHistory = new Map<string, ChatMessage[]>();
+
+function pushMessage(botId: string, telegramId: string, msg: ChatMessage) {
+  const key = `${botId}:${telegramId}`;
+  const msgs = chatHistory.get(key) ?? [];
+  msgs.push(msg);
+  if (msgs.length > MAX_MESSAGES_PER_CHAT) msgs.splice(0, msgs.length - MAX_MESSAGES_PER_CHAT);
+  chatHistory.set(key, msgs);
+}
+
+export function getChatHistory(botId: string, telegramId: string): ChatMessage[] {
+  return chatHistory.get(`${botId}:${telegramId}`) ?? [];
+}
+
 type TelegramUser = { id: number; first_name: string; last_name?: string; username?: string };
 
 type PendingPayment = {
@@ -365,6 +392,47 @@ export async function startBot(botId: string, token: string) {
   await stopBot(botId);
 
   const bot = new Bot(token);
+
+  // ── Capture outgoing bot messages (transformer) ──────────────────────────
+  const SEND_METHODS = new Set(["sendMessage", "sendPhoto", "sendVideo", "sendSticker", "sendDocument"]);
+  bot.api.config.use(async (prev, method, payload, signal) => {
+    const result = await prev(method, payload, signal);
+    if (SEND_METHODS.has(method)) {
+      const p = payload as any;
+      const chatId = String(p.chat_id);
+      let type: ChatMessage["type"] = "text";
+      let mediaUrl: string | undefined;
+      if (method === "sendPhoto") { type = "photo"; mediaUrl = typeof p.photo === "string" ? p.photo : undefined; }
+      else if (method === "sendVideo") { type = "video"; mediaUrl = typeof p.video === "string" ? p.video : undefined; }
+      else if (method === "sendSticker") { type = "sticker"; }
+      pushMessage(botId, chatId, {
+        from: "bot",
+        type,
+        text: p.text,
+        caption: p.caption,
+        mediaUrl,
+        timestamp: Date.now(),
+      });
+    }
+    return result;
+  });
+
+  // ── Capture incoming user messages (middleware) ───────────────────────────
+  bot.use(async (ctx, next) => {
+    if (ctx.message && ctx.from) {
+      const telegramId = String(ctx.from.id);
+      const msg = ctx.message;
+      let type: ChatMessage["type"] = "other";
+      let text: string | undefined;
+      let mediaUrl: string | undefined;
+      if (msg.text) { type = "text"; text = msg.text; }
+      else if (msg.photo) { type = "photo"; text = msg.caption; }
+      else if (msg.video) { type = "video"; text = msg.caption; }
+      else if (msg.sticker) { type = "sticker"; text = msg.sticker.emoji; }
+      pushMessage(botId, telegramId, { from: "user", type, text, mediaUrl, timestamp: Date.now() });
+    }
+    await next();
+  });
 
   bot.command("start", async (ctx) => {
     try {
