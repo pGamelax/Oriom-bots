@@ -17,15 +17,14 @@ export const trackingRoutes = new Elysia()
   // ── GET /track/:botUsername ──────────────────────────────────────────────
   .get(
     "/track/:botUsername",
-    async ({ params, query, set }) => {
+    async ({ params, query }) => {
       const bot = await prisma.bot.findFirst({
         where: { username: params.botUsername, active: true },
         select: { id: true, username: true },
       });
 
       if (!bot) {
-        set.status = 404;
-        return "Bot not found.";
+        return new Response("Bot not found.", { status: 404 });
       }
 
       const fbclid = (query as Record<string, string>).fbclid ?? null;
@@ -42,14 +41,7 @@ export const trackingRoutes = new Elysia()
       const telegramUrl = `https://t.me/${bot.username}?start=${clickToken.token}`;
       const fbpEndpoint = "/track/fbp";
 
-      set.headers["Content-Type"] = "text/html; charset=utf-8";
-      set.headers["Cache-Control"] = "no-store";
-
-      // The page:
-      // 1. Reads _fbp from cookie via JS (set by FB Pixel SDK on prior visits)
-      // 2. POSTs it to /track/fbp so we can attach it to the ClickToken
-      // 3. Immediately redirects to Telegram deep link
-      return `<!DOCTYPE html>
+      const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -99,6 +91,13 @@ export const trackingRoutes = new Elysia()
 </script>
 </body>
 </html>`;
+
+      return new Response(html, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      });
     }
   )
 
