@@ -147,7 +147,7 @@ function GatewayForm({
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border">
           <h2 className="text-base font-semibold text-foreground">
             {editing ? "Editar gateway" : "Novo gateway"}
           </h2>
@@ -160,7 +160,7 @@ function GatewayForm({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5">
           {/* Gateway type */}
           <div>
             <label className="text-xs font-semibold text-text-label uppercase tracking-wide mb-1.5 block">
@@ -368,7 +368,7 @@ function GatewayCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-surface rounded-2xl border p-4 flex items-center gap-3 transition-all",
+        "bg-surface rounded-2xl border p-3 sm:p-4 flex items-center gap-2 sm:gap-3 transition-all",
         isDragging
           ? "shadow-xl shadow-primary/15 border-lilac"
           : "border-border"
@@ -528,19 +528,19 @@ function GatewaysPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Gateways de Pagamento</h1>
+      <div className="flex items-center justify-between gap-3 mb-6 sm:mb-8">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">Gateways de Pagamento</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {items.length} {items.length === 1 ? "gateway configurado" : "gateways configurados"}
           </p>
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors shadow-md shadow-primary/25"
+          className="shrink-0 flex items-center gap-2 h-10 px-3 sm:px-4 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors shadow-md shadow-primary/25"
         >
           <Plus className="w-4 h-4" />
-          Adicionar gateway
+          <span className="hidden sm:inline">Adicionar gateway</span>
         </button>
       </div>
 
@@ -587,7 +587,7 @@ function GatewaysPage() {
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={items.map((g) => g.id)} strategy={verticalListSortingStrategy}>
-            <div className="flex flex-col gap-3 max-w-2xl">
+            <div className="flex flex-col gap-3 w-full max-w-2xl">
               {items.map((gateway, index) => (
                 <GatewayCard
                   key={gateway.id}

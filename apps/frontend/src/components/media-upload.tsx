@@ -110,7 +110,7 @@ export function MediaUpload({ value, mediaType, onChange, onClear }: MediaUpload
   return (
     <div
       className={cn(
-        "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all",
+        "border-2 border-dashed rounded-xl p-5 sm:p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all",
         dragOver
           ? "border-primary bg-lilac-light"
           : "border-border bg-surface-subtle hover:border-border-medium hover:bg-surface-raised",

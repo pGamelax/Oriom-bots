@@ -21,10 +21,10 @@ const navGroups = [
   {
     label: "Automações",
     items: [
-      { to: "/bots",         icon: Bot,      label: "Meus Bots" },
-      { to: "/flows",        icon: GitBranch, label: "Fluxos" },
-      { to: "/remarketings", icon: Megaphone, label: "Remarketings" },
-      { to: "/tracking",     icon: Link2,     label: "Rastreamento" },
+      { to: "/bots",         icon: Bot,        label: "Meus Bots" },
+      { to: "/flows",        icon: GitBranch,  label: "Fluxos" },
+      { to: "/remarketings", icon: Megaphone,  label: "Remarketings" },
+      { to: "/tracking",     icon: Link2,      label: "Rastreamento" },
     ],
   },
   {
@@ -135,7 +135,7 @@ export function Sidebar() {
       </aside>
 
       {/* ── Mobile bottom navbar ────────────────────────────────────────────── */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-border">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-border safe-bottom">
         <div className="flex items-stretch h-16">
           {/* 4 main items */}
           {navItems

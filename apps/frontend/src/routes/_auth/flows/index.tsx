@@ -108,19 +108,19 @@ function FlowsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Fluxos</h1>
+      <div className="flex items-center justify-between gap-3 mb-6 sm:mb-8">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">Fluxos</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {flows.length} {flows.length === 1 ? "fluxo configurado" : "fluxos configurados"}
           </p>
         </div>
         <Link
           to="/flows/new"
-          className="flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors shadow-md shadow-primary/25"
+          className="shrink-0 flex items-center gap-2 h-10 px-3 sm:px-4 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors shadow-md shadow-primary/25"
         >
           <Plus className="w-4 h-4" />
-          Novo fluxo
+          <span className="hidden sm:inline">Novo fluxo</span>
         </Link>
       </div>
 

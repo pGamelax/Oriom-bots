@@ -126,7 +126,7 @@ function PixelForm({
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border">
           <h2 className="text-base font-semibold text-foreground">
             {editing ? "Editar pixel" : "Novo pixel"}
           </h2>
@@ -136,7 +136,7 @@ function PixelForm({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5">
 
           {/* Platform badge */}
           <div className="flex items-center gap-2.5 p-3 rounded-xl border border-border bg-page-bg">
@@ -338,7 +338,7 @@ function PixelCard({
   });
 
   return (
-    <div className="bg-surface rounded-2xl border border-border p-4 flex items-center gap-3">
+    <div className="bg-surface rounded-2xl border border-border p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
       {/* Icon */}
       <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
         <Facebook className="w-5 h-5 text-blue-600" />
@@ -436,19 +436,19 @@ function PixelsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Pixels de Rastreamento</h1>
+      <div className="flex items-center justify-between gap-3 mb-6 sm:mb-8">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">Pixels de Rastreamento</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {pixels.length} {pixels.length === 1 ? "pixel configurado" : "pixels configurados"}
           </p>
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover transition-colors shadow-md shadow-primary/25"
+          className="shrink-0 flex items-center gap-2 h-10 px-3 sm:px-4 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover transition-colors shadow-md shadow-primary/25"
         >
           <Plus className="w-4 h-4" />
-          Adicionar pixel
+          <span className="hidden sm:inline">Adicionar pixel</span>
         </button>
       </div>
 
@@ -477,7 +477,7 @@ function PixelsPage() {
           </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-3 max-w-2xl">
+        <div className="flex flex-col gap-3 w-full max-w-2xl">
           {pixels.map((pixel) => (
             <PixelCard key={pixel.id} pixel={pixel} onEdit={openEdit} />
           ))}

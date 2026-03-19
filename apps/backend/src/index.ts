@@ -40,5 +40,12 @@ const app = new Elysia({ adapter: node() })
 
 console.log(`Server running at http://localhost:${app.server?.port}`);
 
+// Suppress unhandled GramJS TIMEOUT errors from update loop
+process.on("unhandledRejection", (reason: any) => {
+  const msg = String(reason?.message ?? reason ?? "");
+  if (msg.includes("TIMEOUT")) return; // GramJS internal, safe to ignore
+  console.error("[UnhandledRejection]", reason);
+});
+
 startAllBots();
 startRemarketingScheduler();

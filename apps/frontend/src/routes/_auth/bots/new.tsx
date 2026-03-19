@@ -86,15 +86,15 @@ function NewBotPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex items-center gap-3 mb-6 sm:mb-8">
         <Link
           to="/bots"
-          className="p-2 rounded-lg hover:bg-lilac-light transition-colors"
+          className="p-2 rounded-lg hover:bg-lilac-light transition-colors shrink-0"
         >
           <ArrowLeft className="w-4 h-4 text-text-label" />
         </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
             Adicionar bot
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -104,9 +104,9 @@ function NewBotPage() {
       </div>
 
       {/* Form card */}
-      <div className="max-w-lg bg-surface rounded-2xl border border-border shadow-xl shadow-primary/8 overflow-hidden">
+      <div className="w-full max-w-lg bg-surface rounded-2xl border border-border shadow-xl shadow-primary/8 overflow-hidden">
         {/* Token section */}
-        <div className="p-6 border-b border-border">
+        <div className="p-4 sm:p-6 border-b border-border">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-lg bg-lilac-light flex items-center justify-center">
               <KeyRound className="w-3.5 h-3.5 text-primary" />
@@ -155,7 +155,7 @@ function NewBotPage() {
             botVerified ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
           )}
         >
-          <div className="p-6 border-b border-border">
+          <div className="p-4 sm:p-6 border-b border-border">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-7 h-7 rounded-lg bg-lilac-light flex items-center justify-center">
                 <Bot className="w-3.5 h-3.5 text-primary" />
@@ -165,7 +165,7 @@ function NewBotPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-text-label">
                   Nome
@@ -200,7 +200,7 @@ function NewBotPage() {
         {/* Actions */}
         <form
           onSubmit={handleSubmit}
-          className="p-6 flex items-center justify-end gap-3"
+          className="p-4 sm:p-6 flex items-center justify-end gap-3"
         >
           <Link
             to="/bots"

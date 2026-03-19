@@ -194,19 +194,19 @@ export function FlowForm({ mode, flowId }: FlowFormProps) {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3 min-w-0">
           <Link
             to="/flows"
-            className="p-2 rounded-lg hover:bg-lilac-light transition-colors"
+            className="p-2 rounded-lg hover:bg-lilac-light transition-colors shrink-0"
           >
             <ArrowLeft className="w-4 h-4 text-text-label" />
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
               {mode === "create" ? "Novo fluxo" : "Editar fluxo"}
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <p className="text-sm text-muted-foreground mt-0.5 hidden sm:block">
               Configure as mensagens enviadas após o /start
             </p>
           </div>
@@ -254,7 +254,7 @@ export function FlowForm({ mode, flowId }: FlowFormProps) {
 
           {/* ── BOT ── */}
           <TabsContent value="bot">
-            <div className="bg-surface rounded-2xl border border-border p-6 max-w-lg flex flex-col gap-5">
+            <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6 w-full max-w-lg flex flex-col gap-5">
               <div>
                 <SectionLabel
                   label="Nome do fluxo"
@@ -310,7 +310,7 @@ export function FlowForm({ mode, flowId }: FlowFormProps) {
           <TabsContent value="boas-vindas">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               {/* Mídia */}
-              <div className="bg-surface rounded-2xl border border-border p-6">
+              <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                 <SectionLabel
                   label="Mídia do /start"
                   description="Imagem ou vídeo enviado quando o usuário acessa o bot."
@@ -325,7 +325,7 @@ export function FlowForm({ mode, flowId }: FlowFormProps) {
 
               {/* Caption + texto separado */}
               <div className="flex flex-col gap-4">
-                <div className="bg-surface rounded-2xl border border-border p-6">
+                <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                   <SectionLabel
                     label="Caption"
                     description="Texto exibido junto à mídia."
@@ -339,7 +339,7 @@ export function FlowForm({ mode, flowId }: FlowFormProps) {
                   />
                 </div>
 
-                <div className="bg-surface rounded-2xl border border-border p-6">
+                <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                   <div className="flex items-center justify-between gap-3 mb-0">
                     <SectionLabel
                       label="Mensagem separada para os botões"
@@ -382,7 +382,7 @@ export function FlowForm({ mode, flowId }: FlowFormProps) {
           <TabsContent value="planos">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               {/* Buttons column */}
-              <div className="bg-surface rounded-2xl border border-border p-6">
+              <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                 <SectionLabel
                   label="Planos de pagamento"
                   description="Cada botão representa um plano. O valor será usado para gerar o PIX."
@@ -492,7 +492,7 @@ export function FlowForm({ mode, flowId }: FlowFormProps) {
                 const missing = anyUsesDefault && !defaultDeliveryUrl.trim();
                 return (
                   <div className={cn(
-                    "bg-surface rounded-2xl border p-6 transition-colors",
+                    "bg-surface rounded-2xl border p-4 sm:p-6 transition-colors",
                     missing
                       ? "border-[oklch(65%_0.18_25)]"
                       : "border-border"
@@ -539,7 +539,7 @@ export function FlowForm({ mode, flowId }: FlowFormProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               <div className="flex flex-col gap-4">
                 {/* QR Caption */}
-                <div className="bg-surface rounded-2xl border border-border p-6">
+                <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                   <SectionLabel
                     label="Legenda do QR Code"
                     description="Texto exibido junto à imagem do QR Code."
@@ -554,7 +554,7 @@ export function FlowForm({ mode, flowId }: FlowFormProps) {
                 </div>
 
                 {/* Copy label */}
-                <div className="bg-surface rounded-2xl border border-border p-6">
+                <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                   <SectionLabel
                     label="Label do código PIX"
                     description="Texto exibido antes do código copia e cola."
@@ -569,7 +569,7 @@ export function FlowForm({ mode, flowId }: FlowFormProps) {
                 </div>
 
                 {/* After label */}
-                <div className="bg-surface rounded-2xl border border-border p-6">
+                <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                   <SectionLabel
                     label="Mensagem dos botões de ação"
                     description="Texto acima dos botões Verificar Status / Copiar Código / Ver QR Code."
@@ -585,7 +585,7 @@ export function FlowForm({ mode, flowId }: FlowFormProps) {
               </div>
 
               {/* How to pay */}
-              <div className="bg-surface rounded-2xl border border-border p-6">
+              <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                 <SectionLabel
                   label="Instruções de pagamento"
                   description="Mensagem enviada ao usuário ensinando como pagar via PIX. Suporta HTML do Telegram (<b>, <i>, <code>)."

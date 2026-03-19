@@ -33,8 +33,8 @@ function TrackingPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">Links de Rastreamento</h1>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Links de Rastreamento</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Use estes links como destino dos anúncios no Facebook Ads para rastrear cliques com precisão.
         </p>
@@ -43,7 +43,7 @@ function TrackingPage() {
     
 
       {/* How to use card */}
-      <div className="bg-surface rounded-2xl border border-border p-5 mb-6 max-w-2xl">
+      <div className="bg-surface rounded-2xl border border-border p-4 sm:p-5 mb-6 w-full max-w-2xl">
         <h2 className="text-sm font-semibold text-text-strong mb-3">Como configurar no Ads Manager</h2>
         <ol className="flex flex-col gap-2 text-sm text-text-label">
           <li className="flex gap-2.5">
@@ -66,7 +66,7 @@ function TrackingPage() {
       </div>
 
       {/* Bot links */}
-      <div className="max-w-2xl">
+      <div className="w-full max-w-2xl">
         <h2 className="text-xs font-semibold text-text-label uppercase tracking-wide mb-3">
           Links por bot
         </h2>
@@ -94,23 +94,23 @@ function TrackingPage() {
               return (
                 <div key={bot.id} className="bg-surface rounded-2xl border border-border p-4">
                   <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <p className="text-sm font-semibold text-text-strong">@{bot.username}</p>
-                      <p className="text-xs text-text-muted">{bot.name}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-text-strong truncate">@{bot.username}</p>
+                      <p className="text-xs text-text-muted truncate">{bot.name}</p>
                     </div>
                     <a
                       href={`https://t.me/${bot.username}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="h-7 px-2.5 flex items-center gap-1.5 rounded-lg text-xs font-medium text-text-muted hover:bg-surface-subtle transition-all"
+                      className="shrink-0 h-7 px-2.5 flex items-center gap-1.5 rounded-lg text-xs font-medium text-text-muted hover:bg-surface-subtle transition-all"
                     >
                       <ExternalLink className="w-3 h-3" />
-                      Abrir bot
+                      <span className="hidden sm:inline">Abrir bot</span>
                     </a>
                   </div>
 
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-page-bg border border-border-subtle">
-                    <code className="flex-1 text-xs font-mono text-text-label truncate">{url}</code>
+                  <div className="flex items-center gap-2 p-2.5 sm:p-3 rounded-xl bg-page-bg border border-border-subtle overflow-hidden">
+                    <code className="flex-1 text-xs font-mono text-text-label truncate min-w-0">{url}</code>
                     <button
                       onClick={() => copyUrl(bot.id, url)}
                       title="Copiar link"

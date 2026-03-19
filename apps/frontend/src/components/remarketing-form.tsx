@@ -115,7 +115,7 @@ function VariantCard({
     <div className="bg-surface rounded-2xl border border-border overflow-hidden">
       {/* Header */}
       <div
-        className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-subtle transition-colors"
+        className="flex items-center justify-between gap-2 px-4 sm:px-5 py-4 cursor-pointer hover:bg-surface-subtle transition-colors"
         onClick={onToggleExpand}
       >
         <div className="flex items-center gap-3">
@@ -125,7 +125,7 @@ function VariantCard({
           <div>
             <p className="text-sm font-semibold text-text-strong">Variante {index + 1}</p>
             {!expanded && (
-              <p className="text-xs text-text-muted truncate max-w-65">
+              <p className="text-xs text-text-muted truncate max-w-[180px] sm:max-w-xs">
                 {variant.caption.trim() || variant.textMessage.trim() || "Sem mensagem configurada"}
               </p>
             )}
@@ -151,12 +151,12 @@ function VariantCard({
 
       {/* Body */}
       {expanded && (
-        <div className="px-5 pb-5 border-t border-border">
+        <div className="px-4 sm:px-5 pb-4 sm:pb-5 border-t border-border">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
             {/* Left: media + caption + text message */}
             <div className="flex flex-col gap-4">
               {/* Media */}
-              <div className="bg-surface-subtle rounded-xl border border-border p-4">
+              <div className="bg-surface-subtle rounded-xl border border-border p-3 sm:p-4">
                 <SectionLabel label="Mídia" description="Imagem ou vídeo. Opcional." />
                 <MediaUpload
                   value={variant.mediaUrl}
@@ -167,7 +167,7 @@ function VariantCard({
               </div>
 
               {/* Caption */}
-              <div className="bg-surface-subtle rounded-xl border border-border p-4">
+              <div className="bg-surface-subtle rounded-xl border border-border p-3 sm:p-4">
                 <SectionLabel label="Caption" description="Texto exibido junto à mídia." />
                 <textarea
                   value={variant.caption}
@@ -179,7 +179,7 @@ function VariantCard({
               </div>
 
               {/* Separate text message */}
-              <div className="bg-surface-subtle rounded-xl border border-border p-4">
+              <div className="bg-surface-subtle rounded-xl border border-border p-3 sm:p-4">
                 <div className="flex items-center justify-between gap-3 mb-0">
                   <SectionLabel
                     label="Mensagem separada para os botões"
@@ -217,7 +217,7 @@ function VariantCard({
             {/* Right: buttons */}
             <div className="flex flex-col gap-4">
               {/* Buttons list */}
-              <div className="bg-surface-subtle rounded-xl border border-border p-4">
+              <div className="bg-surface-subtle rounded-xl border border-border p-3 sm:p-4">
                 <SectionLabel
                   label="Planos desta variante"
                   description="Botões enviados nesta variante."
@@ -316,7 +316,7 @@ function VariantCard({
 
               {/* Flow buttons reference */}
               {flowId && (
-                <div className="bg-surface-subtle rounded-xl border border-border p-4">
+                <div className="bg-surface-subtle rounded-xl border border-border p-3 sm:p-4">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <SectionLabel label="Planos do fluxo" description="Clique em + para importar." />
                     {flowButtons.length > 0 && (
@@ -594,19 +594,19 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3 min-w-0">
           <Link
             to="/remarketings"
-            className="p-2 rounded-lg hover:bg-lilac-light transition-colors"
+            className="p-2 rounded-lg hover:bg-lilac-light transition-colors shrink-0"
           >
             <ArrowLeft className="w-4 h-4 text-text-label" />
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
               {mode === "create" ? "Novo remarketing" : "Editar remarketing"}
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <p className="text-sm text-muted-foreground mt-0.5 hidden sm:block">
               Configure mensagens automáticas para reengajar seus leads
             </p>
           </div>
@@ -652,7 +652,7 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               {/* Left column */}
               <div className="flex flex-col gap-4">
-                <div className="bg-surface rounded-2xl border border-border p-6">
+                <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                   <SectionLabel
                     label="Nome do remarketing"
                     description="Identificador interno para organizar seus remarketings."
@@ -666,7 +666,7 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
                   />
                 </div>
 
-                <div className="bg-surface rounded-2xl border border-border p-6">
+                <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                   <SectionLabel
                     label="Fluxo associado"
                     description="O remarketing usará os gateways e pixels configurados neste fluxo."
@@ -695,7 +695,7 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
                   )}
                 </div>
 
-                <div className="bg-surface rounded-2xl border border-border p-6">
+                <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                   <SectionLabel
                     label="Começar a enviar após"
                     description="Tempo mínimo desde a ação do lead para ele ser elegível."
@@ -713,7 +713,7 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
                   </Select>
                 </div>
 
-                <div className="bg-surface rounded-2xl border border-border p-6">
+                <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                   <SectionLabel
                     label="Repetir a cada"
                     description="Com qual frequência o remarketing dispara para leads elegíveis."
@@ -733,7 +733,7 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
 
                 {/* Default delivery URL */}
                 <div className={cn(
-                  "bg-surface rounded-2xl border p-6 transition-colors",
+                  "bg-surface rounded-2xl border p-4 sm:p-6 transition-colors",
                   missingDefaultUrl ? "border-[oklch(65%_0.18_25)]" : "border-border"
                 )}>
                   <div className="mb-3">
@@ -764,7 +764,7 @@ export function RemarketingForm({ mode, remarketingId }: RemarketingFormProps) {
               </div>
 
               {/* Right: audience */}
-              <div className="bg-surface rounded-2xl border border-border p-6">
+              <div className="bg-surface rounded-2xl border border-border p-4 sm:p-6">
                 <SectionLabel
                   label="Audiência"
                   description="Para quais leads este remarketing será enviado."

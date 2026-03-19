@@ -140,12 +140,12 @@ function FinanceiroPage() {
     <div>
       {/* Header */}
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-foreground">Financeiro</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Financeiro</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Transações PIX geradas pelos seus bots</p>
       </div>
 
       {/* Period bar */}
-      <div className="bg-surface rounded-2xl border border-border px-5 py-3 mb-5 flex items-center justify-between gap-4 flex-wrap">
+      <div className="bg-surface rounded-2xl border border-border px-4 sm:px-5 py-3 mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 text-text-muted">
           <Calendar className="w-4 h-4" />
           <span className="text-[11px] font-semibold uppercase tracking-widest">Período</span>

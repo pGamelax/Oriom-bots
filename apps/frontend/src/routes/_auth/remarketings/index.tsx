@@ -92,7 +92,7 @@ function LogsTable({ remarketing }: { remarketing: Remarketing }) {
 
   if (logs.length === 0) {
     return (
-      <div className="px-5 pb-5">
+      <div className="px-3 sm:px-5 pb-4 sm:pb-5">
         <div className="border border-dashed border-border rounded-xl p-4 text-center">
           <p className="text-xs text-text-muted">
             Nenhum disparo registrado ainda.
@@ -106,7 +106,7 @@ function LogsTable({ remarketing }: { remarketing: Remarketing }) {
   const totalBlocked = logs.reduce((s, l) => s + l.blocked, 0);
 
   return (
-    <div className="px-5 pb-5">
+    <div className="px-3 sm:px-5 pb-4 sm:pb-5">
       {/* Aggregate stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
         {[
@@ -114,18 +114,23 @@ function LogsTable({ remarketing }: { remarketing: Remarketing }) {
           { label: "Bloqueados", value: totalBlocked },
           { label: "PIX gerados", value: stats.generated },
           { label: "PIX pagos", value: stats.paid },
-          { label: "Receita", value: fmtBRL(stats.revenueInCents) },
         ].map(({ label, value }) => (
           <div
             key={label}
             className="bg-surface-subtle rounded-xl border border-border px-3 py-2 text-center"
           >
-            <p className="text-xs text-text-muted">{label}</p>
+            <p className="text-[10px] sm:text-xs text-text-muted leading-tight">{label}</p>
             <p className="text-sm font-semibold text-foreground mt-0.5">
               {value}
             </p>
           </div>
         ))}
+        <div className="col-span-2 sm:col-span-1 bg-surface-subtle rounded-xl border border-border px-3 py-2 text-center">
+          <p className="text-[10px] sm:text-xs text-text-muted leading-tight">Receita</p>
+          <p className="text-sm font-semibold text-foreground mt-0.5">
+            {fmtBRL(stats.revenueInCents)}
+          </p>
+        </div>
       </div>
 
       {/* Logs table */}
@@ -133,20 +138,20 @@ function LogsTable({ remarketing }: { remarketing: Remarketing }) {
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-border bg-surface-subtle">
-              <th className="text-left px-3 py-2 font-medium text-text-muted whitespace-nowrap">
+              <th className="hidden sm:table-cell text-left px-3 py-2 font-medium text-text-muted whitespace-nowrap">
                 #
               </th>
-              <th className="text-left px-3 py-2 font-medium text-text-muted whitespace-nowrap">
+              <th className="hidden sm:table-cell text-left px-3 py-2 font-medium text-text-muted whitespace-nowrap">
                 Início
               </th>
               <th className="text-left px-3 py-2 font-medium text-text-muted whitespace-nowrap">
                 Fim
               </th>
               <th className="text-right px-3 py-2 font-medium text-text-muted">
-                Enviados
+                Env.
               </th>
               <th className="text-right px-3 py-2 font-medium text-text-muted">
-                Bloqueados
+                Bloq.
               </th>
               <th className="text-left px-3 py-2 font-medium text-text-muted">
                 Status
@@ -159,10 +164,10 @@ function LogsTable({ remarketing }: { remarketing: Remarketing }) {
                 key={log.id}
                 className="border-b border-border last:border-0 hover:bg-surface-subtle/50"
               >
-                <td className="px-3 py-2 text-text-muted">
+                <td className="hidden sm:table-cell px-3 py-2 text-text-muted">
                   {logs.length - idx}
                 </td>
-                <td className="px-3 py-2 text-foreground whitespace-nowrap">
+                <td className="hidden sm:table-cell px-3 py-2 text-foreground whitespace-nowrap">
                   {formatDate(log.startedAt)}
                 </td>
                 <td className="px-3 py-2 text-foreground whitespace-nowrap">
@@ -179,7 +184,7 @@ function LogsTable({ remarketing }: { remarketing: Remarketing }) {
                 <td className="px-3 py-2">
                   <span
                     className={cn(
-                      "px-2 py-0.5 rounded-full font-medium",
+                      "px-2 py-0.5 rounded-full font-medium whitespace-nowrap",
                       log.finishedAt
                         ? "bg-green-100 text-green-700"
                         : "bg-amber-100 text-amber-700",
@@ -215,7 +220,7 @@ function RemarketingCard({
   return (
     <div
       className={cn(
-        "bg-surface rounded-2xl border border-border transition-opacity",
+        "bg-surface rounded-2xl border border-border transition-opacity overflow-hidden",
         !remarketing.active && "opacity-60",
       )}
     >
@@ -295,11 +300,12 @@ function RemarketingCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-text-muted flex-wrap">
+        <div className="flex items-center gap-3 text-xs text-text-muted flex-wrap">
           <span className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
-            Início: {intervalLabel(remarketing.startAfterMinutes)} · Repetir: {intervalLabel(remarketing.intervalMinutes)}
+            Início: {intervalLabel(remarketing.startAfterMinutes)}
           </span>
+          <span>Repetir: {intervalLabel(remarketing.intervalMinutes)}</span>
           <span className="flex items-center gap-1">
             <Users className="w-3.5 h-3.5" />
             {remarketing.variants.reduce((s, v) => s + v.buttons.length, 0)} plano
@@ -364,19 +370,19 @@ function RemarketingsPage() {
 
   return (
     <div>
-      <div className="mb-5 flex items-center justify-between gap-4">
+      <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Remarketings</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Remarketings</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Envios automáticos periódicos para reengajar seus leads
           </p>
         </div>
         <Link
           to="/remarketings/new"
-          className="flex items-center gap-2 h-9 px-4 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors shrink-0"
+          className="flex items-center gap-2 h-9 px-3 sm:px-4 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors shrink-0"
         >
           <Plus className="w-4 h-4" />
-          Novo remarketing
+          <span className="hidden sm:inline">Novo remarketing</span>
         </Link>
       </div>
 
