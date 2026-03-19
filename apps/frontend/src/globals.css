@@ -108,12 +108,19 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Conteúdo principal: garante que não fique atrás do bottom nav + home bar */
+/* Conteúdo principal: top (status bar) + bottom (nav + home bar) */
 .safe-bottom-content {
+  padding-top: calc(1rem + env(safe-area-inset-top));
   padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 640px) {
+  .safe-bottom-content {
+    padding-top: calc(1.5rem + env(safe-area-inset-top));
+  }
 }
 @media (min-width: 768px) {
   .safe-bottom-content {
+    padding-top: 2rem;
     padding-bottom: 2rem;
   }
 }

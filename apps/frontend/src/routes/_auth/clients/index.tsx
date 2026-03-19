@@ -221,7 +221,7 @@ function ChatDialog({ lead, onClose }: { lead: Lead; onClose: () => void }) {
 // ── Page ──────────────────────────────────────────────────────────────────
 
 function ClientsPage() {
-  const [dateRange, setDateRange] = useState<DateRange>("all");
+  const [dateRange, setDateRange] = useState<DateRange>("today");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("__all__");
   const [botFilter, setBotFilter] = useState("__all__");

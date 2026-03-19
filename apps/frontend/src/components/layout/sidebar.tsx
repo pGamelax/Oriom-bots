@@ -92,7 +92,7 @@ export function Sidebar() {
   return (
     <>
       {/* ── Desktop sidebar ─────────────────────────────────────────────────── */}
-      <aside className="fixed inset-y-0 left-0 z-20 w-60 flex-col bg-surface border-r border-border hidden md:flex">
+      <aside className="fixed inset-y-0 left-0 z-20 w-60 flex-col bg-surface border-r border-border hidden md:flex" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         {/* Logo */}
         <div className="h-16 flex items-center gap-3 px-5 border-b border-border">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0 shadow-md shadow-primary/30">

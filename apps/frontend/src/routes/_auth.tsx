@@ -17,7 +17,7 @@ function AuthLayout() {
   return (
     <div className="min-h-dvh bg-page-bg">
       <Sidebar />
-      <main className="md:ml-60 p-4 sm:p-6 md:p-8 pb-28 md:pb-8 safe-bottom-content">
+      <main className="md:ml-60 px-4 sm:px-6 md:px-8 safe-bottom-content">
         <Outlet />
       </main>
     </div>

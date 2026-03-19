@@ -103,7 +103,7 @@ function StatCard({ label, count, total, icon: Icon, color }: {
 // ── Page ──────────────────────────────────────────────────────────────────
 
 function FinanceiroPage() {
-  const [dateRange, setDateRange] = useState<DateRange>("all");
+  const [dateRange, setDateRange] = useState<DateRange>("today");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("__all__");
   const [gatewayFilter, setGatewayFilter] = useState("__all__");

@@ -262,7 +262,7 @@ function MiniBar({ data, days }: { data: number[]; days: Date[] }) {
 // ── Page ──────────────────────────────────────────────────────────────────
 
 function DashboardPage() {
-  const [dateRange, setDateRange] = useState<DateRange>("all");
+  const [dateRange, setDateRange] = useState<DateRange>("today");
   const dateParams = useMemo(() => getDateRange(dateRange), [dateRange]);
 
   const { data: payStats } = useQuery({
