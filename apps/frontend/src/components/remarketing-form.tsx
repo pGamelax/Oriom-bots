@@ -30,7 +30,7 @@ interface VariantState {
   buttons: Button[];
 }
 
-type Audience = "all" | "new" | "pending" | "paid";
+type Audience = "all" | "new" | "pending" | "paid" | "unpaid";
 
 export interface RemarketingFormProps {
   mode: "create" | "edit";
@@ -66,10 +66,11 @@ function emptyVariant(): VariantState {
 }
 
 const AUDIENCES: { value: Audience; label: string; description: string }[] = [
-  { value: "new",     label: "Nunca gerou PIX",      description: "Enviado X min após o /start para leads que ainda não geraram PIX" },
-  { value: "pending", label: "Gerou PIX, não pagou", description: "Enviado X min após a geração do PIX para leads que não pagaram" },
-  { value: "paid",    label: "Já comprou",            description: "Enviado X min após a compra aprovada" },
-  { value: "all",     label: "Todos os leads",        description: "Enviado X min após o /start para todos os leads (exceto bloqueados)" },
+  { value: "new",     label: "Nunca gerou PIX",           description: "Enviado X min após o /start para leads que ainda não geraram PIX" },
+  { value: "pending", label: "Gerou PIX, não pagou",      description: "Enviado X min após a geração do PIX para leads que não pagaram" },
+  { value: "unpaid",  label: "Não pagaram (start ou PIX)", description: "Leads que deram /start ou geraram PIX mas ainda não pagaram" },
+  { value: "paid",    label: "Já comprou",                 description: "Enviado X min após a compra aprovada" },
+  { value: "all",     label: "Todos os leads",             description: "Enviado X min após o /start para todos os leads (exceto bloqueados)" },
 ];
 
 const INTERVAL_OPTIONS = [

@@ -24,7 +24,7 @@ const variantSchema = t.Object({
 const remarketingBody = t.Object({
   flowId:             t.String(),
   name:               t.String(),
-  targetAudience:     t.Union([t.Literal("all"), t.Literal("new"), t.Literal("pending"), t.Literal("paid")]),
+  targetAudience:     t.Union([t.Literal("all"), t.Literal("new"), t.Literal("pending"), t.Literal("paid"), t.Literal("unpaid")]),
   intervalMinutes:    t.Number({ minimum: 1 }),
   startAfterMinutes:  t.Number({ minimum: 0 }),
   defaultDeliveryUrl: t.Optional(t.String()),

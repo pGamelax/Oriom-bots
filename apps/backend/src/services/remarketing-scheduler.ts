@@ -133,6 +133,11 @@ async function runRemarketing(
       where: { botId: flowBotId, status: "new", startedAt: { lte: cutoff } },
       select: { telegramId: true, name: true },
     });
+  } else if (targetAudience === "unpaid") {
+    leads = await prisma.lead.findMany({
+      where: { botId: flowBotId, status: { in: ["new", "pending"] }, startedAt: { lte: cutoff } },
+      select: { telegramId: true, name: true },
+    });
   } else {
     leads = await prisma.lead.findMany({
       where: { botId: flowBotId, status: { notIn: ["blocked"] }, startedAt: { lte: cutoff } },
