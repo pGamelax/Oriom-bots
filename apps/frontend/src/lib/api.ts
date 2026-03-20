@@ -349,7 +349,7 @@ export interface Remarketing {
   };
   name: string;
   active: boolean;
-  targetAudience: "all" | "new" | "pending" | "paid";
+  targetAudience: "all" | "new" | "pending" | "paid" | "unpaid";
   intervalMinutes: number;
   startAfterMinutes: number;
   defaultDeliveryUrl: string | null;
@@ -365,7 +365,7 @@ export interface Remarketing {
 export interface RemarketingPayload {
   flowId: string;
   name: string;
-  targetAudience: "all" | "new" | "pending" | "paid";
+  targetAudience: "all" | "new" | "pending" | "paid" | "unpaid";
   intervalMinutes: number;
   startAfterMinutes: number;
   defaultDeliveryUrl?: string;

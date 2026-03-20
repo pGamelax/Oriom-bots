@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_auth/remarketings/")({
   component: RemarketingsPage,
 });
 
-type Audience = "all" | "new" | "pending" | "paid";
+type Audience = "all" | "new" | "pending" | "paid" | "unpaid";
 
 const AUDIENCE_CONFIG: Record<
   Audience,
@@ -40,6 +40,11 @@ const AUDIENCE_CONFIG: Record<
     label: "Gerou PIX, não pagou",
     color: "text-amber-700",
     bg: "bg-amber-100",
+  },
+  unpaid: {
+    label: "Não pagaram (start ou PIX)",
+    color: "text-orange-700",
+    bg: "bg-orange-100",
   },
   paid: { label: "Já comprou", color: "text-green-700", bg: "bg-green-100" },
 };
