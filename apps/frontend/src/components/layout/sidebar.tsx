@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Bot, CreditCard, GitBranch, LayoutDashboard, LogOut,
-  Megaphone, Moon, Sun, User, Users, DollarSign, Scan, Link2,
+  Megaphone, Moon, Sun, User, Users, DollarSign, Scan, Link2, BarChart2,
   Menu, X,
 } from "lucide-react";
 import { signOut, useSession } from "@/lib/auth-client";
@@ -32,6 +32,7 @@ const navGroups = [
     items: [
       { to: "/gateways", icon: CreditCard, label: "Gateways" },
       { to: "/pixels",   icon: Scan,       label: "Pixels" },
+      { to: "/utmify",   icon: BarChart2,  label: "UTMfy" },
     ],
   },
 ];

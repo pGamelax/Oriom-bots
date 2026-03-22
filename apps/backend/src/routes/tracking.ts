@@ -27,7 +27,14 @@ export const trackingRoutes = new Elysia()
         return new Response("Bot not found.", { status: 404 });
       }
 
-      const fbclid = (query as Record<string, string>).fbclid ?? null;
+      const q = query as Record<string, string>;
+      const fbclid        = q.fbclid ?? null;
+      const utmifyClickId = q.clickid ?? null;
+      const utmSource     = q.utm_source   ?? null;
+      const utmMedium     = q.utm_medium   ?? null;
+      const utmCampaign   = q.utm_campaign ?? null;
+      const utmContent    = q.utm_content  ?? null;
+      const utmTerm       = q.utm_term     ?? null;
 
       // fbc format: fb.<version>.<creation_time_secs>.<fbclid>
       const fbc = fbclid
@@ -35,7 +42,7 @@ export const trackingRoutes = new Elysia()
         : null;
 
       const clickToken = await prisma.clickToken.create({
-        data: { botId: bot.id, fbc },
+        data: { botId: bot.id, fbc, utmifyClickId, utmSource, utmMedium, utmCampaign, utmContent, utmTerm },
       });
 
       const telegramUrl = `https://t.me/${bot.username}?start=${clickToken.token}`;

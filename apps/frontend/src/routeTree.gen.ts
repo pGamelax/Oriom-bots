@@ -14,6 +14,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard'
+import { Route as AuthUtmifyIndexRouteImport } from './routes/_auth/utmify/index'
 import { Route as AuthTrackingIndexRouteImport } from './routes/_auth/tracking/index'
 import { Route as AuthRemarketingsIndexRouteImport } from './routes/_auth/remarketings/index'
 import { Route as AuthPixelsIndexRouteImport } from './routes/_auth/pixels/index'
@@ -51,6 +52,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthDashboardRoute = AuthDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthUtmifyIndexRoute = AuthUtmifyIndexRouteImport.update({
+  id: '/utmify/',
+  path: '/utmify/',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthTrackingIndexRoute = AuthTrackingIndexRouteImport.update({
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/pixels/': typeof AuthPixelsIndexRoute
   '/remarketings/': typeof AuthRemarketingsIndexRoute
   '/tracking/': typeof AuthTrackingIndexRoute
+  '/utmify/': typeof AuthUtmifyIndexRoute
   '/bots/$botId/edit': typeof AuthBotsBotIdEditRoute
   '/flows/$flowId/edit': typeof AuthFlowsFlowIdEditRoute
   '/remarketings/$remarketingId/edit': typeof AuthRemarketingsRemarketingIdEditRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/pixels': typeof AuthPixelsIndexRoute
   '/remarketings': typeof AuthRemarketingsIndexRoute
   '/tracking': typeof AuthTrackingIndexRoute
+  '/utmify': typeof AuthUtmifyIndexRoute
   '/bots/$botId/edit': typeof AuthBotsBotIdEditRoute
   '/flows/$flowId/edit': typeof AuthFlowsFlowIdEditRoute
   '/remarketings/$remarketingId/edit': typeof AuthRemarketingsRemarketingIdEditRoute
@@ -183,6 +191,7 @@ export interface FileRoutesById {
   '/_auth/pixels/': typeof AuthPixelsIndexRoute
   '/_auth/remarketings/': typeof AuthRemarketingsIndexRoute
   '/_auth/tracking/': typeof AuthTrackingIndexRoute
+  '/_auth/utmify/': typeof AuthUtmifyIndexRoute
   '/_auth/bots/$botId/edit': typeof AuthBotsBotIdEditRoute
   '/_auth/flows/$flowId/edit': typeof AuthFlowsFlowIdEditRoute
   '/_auth/remarketings/$remarketingId/edit': typeof AuthRemarketingsRemarketingIdEditRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/pixels/'
     | '/remarketings/'
     | '/tracking/'
+    | '/utmify/'
     | '/bots/$botId/edit'
     | '/flows/$flowId/edit'
     | '/remarketings/$remarketingId/edit'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/pixels'
     | '/remarketings'
     | '/tracking'
+    | '/utmify'
     | '/bots/$botId/edit'
     | '/flows/$flowId/edit'
     | '/remarketings/$remarketingId/edit'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/_auth/pixels/'
     | '/_auth/remarketings/'
     | '/_auth/tracking/'
+    | '/_auth/utmify/'
     | '/_auth/bots/$botId/edit'
     | '/_auth/flows/$flowId/edit'
     | '/_auth/remarketings/$remarketingId/edit'
@@ -293,6 +305,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthDashboardRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/utmify/': {
+      id: '/_auth/utmify/'
+      path: '/utmify'
+      fullPath: '/utmify/'
+      preLoaderRoute: typeof AuthUtmifyIndexRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/tracking/': {
@@ -409,6 +428,7 @@ interface AuthRouteChildren {
   AuthPixelsIndexRoute: typeof AuthPixelsIndexRoute
   AuthRemarketingsIndexRoute: typeof AuthRemarketingsIndexRoute
   AuthTrackingIndexRoute: typeof AuthTrackingIndexRoute
+  AuthUtmifyIndexRoute: typeof AuthUtmifyIndexRoute
   AuthBotsBotIdEditRoute: typeof AuthBotsBotIdEditRoute
   AuthFlowsFlowIdEditRoute: typeof AuthFlowsFlowIdEditRoute
   AuthRemarketingsRemarketingIdEditRoute: typeof AuthRemarketingsRemarketingIdEditRoute
@@ -427,6 +447,7 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthPixelsIndexRoute: AuthPixelsIndexRoute,
   AuthRemarketingsIndexRoute: AuthRemarketingsIndexRoute,
   AuthTrackingIndexRoute: AuthTrackingIndexRoute,
+  AuthUtmifyIndexRoute: AuthUtmifyIndexRoute,
   AuthBotsBotIdEditRoute: AuthBotsBotIdEditRoute,
   AuthFlowsFlowIdEditRoute: AuthFlowsFlowIdEditRoute,
   AuthRemarketingsRemarketingIdEditRoute:

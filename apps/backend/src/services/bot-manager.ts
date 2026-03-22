@@ -2,6 +2,7 @@ import { Bot, Context, InlineKeyboard, InputFile } from "grammy";
 import { PrismaClient } from "@prisma/client";
 import { createPixPayment, checkPixPayment } from "./payment.js";
 import { sendFacebookPurchaseEvent } from "./facebook-capi.js";
+import { sendUtmifyConversion } from "./utmify.js";
 import { handleRemarketingCallback } from "./remarketing-scheduler.js";
 import QRCode from "qrcode";
 
@@ -89,6 +90,12 @@ async function upsertLead(params: {
   planValue?: number | null;
   fbc?: string | null;
   fbp?: string | null;
+  utmifyClickId?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmContent?: string | null;
+  utmTerm?: string | null;
 }) {
   try {
     const telegramId = String(params.from.id);
@@ -96,16 +103,22 @@ async function upsertLead(params: {
       where: { telegramId_botId: { telegramId, botId: params.botId } },
       create: {
         telegramId,
-        name:      telegramName(params.from),
-        username:  params.from.username ?? null,
-        botId:     params.botId,
-        flowId:    params.flowId,
-        userId:    params.userId,
-        status:    params.status,
-        planName:  params.planName ?? null,
-        planValue: params.planValue ?? null,
-        fbc:       params.fbc ?? null,
-        fbp:       params.fbp ?? null,
+        name:           telegramName(params.from),
+        username:       params.from.username ?? null,
+        botId:          params.botId,
+        flowId:         params.flowId,
+        userId:         params.userId,
+        status:         params.status,
+        planName:       params.planName ?? null,
+        planValue:      params.planValue ?? null,
+        fbc:            params.fbc ?? null,
+        fbp:            params.fbp ?? null,
+        utmifyClickId:  params.utmifyClickId ?? null,
+        utmSource:      params.utmSource ?? null,
+        utmMedium:      params.utmMedium ?? null,
+        utmCampaign:    params.utmCampaign ?? null,
+        utmContent:     params.utmContent ?? null,
+        utmTerm:        params.utmTerm ?? null,
       },
       update: {
         name:     telegramName(params.from) ?? undefined,
@@ -114,9 +127,15 @@ async function upsertLead(params: {
         ...(params.status === "new" && { startedAt: new Date() }),
         ...(params.planName  !== undefined && { planName:  params.planName }),
         ...(params.planValue !== undefined && { planValue: params.planValue }),
-        // Only set fbc/fbp if we have them (don't overwrite existing values)
-        ...(params.fbc && { fbc: params.fbc }),
-        ...(params.fbp && { fbp: params.fbp }),
+        // Only set tracking values if we have them (don't overwrite existing)
+        ...(params.fbc           && { fbc: params.fbc }),
+        ...(params.fbp           && { fbp: params.fbp }),
+        ...(params.utmifyClickId && { utmifyClickId: params.utmifyClickId }),
+        ...(params.utmSource     && { utmSource:     params.utmSource }),
+        ...(params.utmMedium     && { utmMedium:     params.utmMedium }),
+        ...(params.utmCampaign   && { utmCampaign:   params.utmCampaign }),
+        ...(params.utmContent    && { utmContent:    params.utmContent }),
+        ...(params.utmTerm       && { utmTerm:       params.utmTerm }),
       },
     });
   } catch (err: any) {
@@ -146,12 +165,20 @@ async function setLeadStatus(
 
 // ── Flow sending ────────────────────────────────────────────────────────────
 
-async function resolveClickToken(token: string): Promise<{ fbc: string | null; fbp: string | null } | null> {
+async function resolveClickToken(token: string): Promise<{
+  fbc: string | null; fbp: string | null; utmifyClickId: string | null;
+  utmSource: string | null; utmMedium: string | null; utmCampaign: string | null;
+  utmContent: string | null; utmTerm: string | null;
+} | null> {
   try {
     const ct = await prisma.clickToken.findUnique({ where: { token } });
     if (!ct || ct.usedAt) return null;
     await prisma.clickToken.update({ where: { id: ct.id }, data: { usedAt: new Date() } });
-    return { fbc: ct.fbc, fbp: ct.fbp };
+    return {
+      fbc: ct.fbc, fbp: ct.fbp, utmifyClickId: ct.utmifyClickId,
+      utmSource: ct.utmSource, utmMedium: ct.utmMedium, utmCampaign: ct.utmCampaign,
+      utmContent: ct.utmContent, utmTerm: ct.utmTerm,
+    };
   } catch {
     return null;
   }
@@ -171,10 +198,25 @@ async function buildAndSendFlow(
   // Resolve tracking token from /start parameter (e.g. /start abc123token)
   let fbc: string | null = null;
   let fbp: string | null = null;
+  let utmifyClickId: string | null = null;
+  let utmSource: string | null = null;
+  let utmMedium: string | null = null;
+  let utmCampaign: string | null = null;
+  let utmContent: string | null = null;
+  let utmTerm: string | null = null;
   const startParam = (ctx as any).match as string | undefined;
   if (startParam?.trim()) {
     const resolved = await resolveClickToken(startParam.trim());
-    if (resolved) { fbc = resolved.fbc; fbp = resolved.fbp; }
+    if (resolved) {
+      fbc = resolved.fbc;
+      fbp = resolved.fbp;
+      utmifyClickId = resolved.utmifyClickId;
+      utmSource     = resolved.utmSource;
+      utmMedium     = resolved.utmMedium;
+      utmCampaign   = resolved.utmCampaign;
+      utmContent    = resolved.utmContent;
+      utmTerm       = resolved.utmTerm;
+    }
   }
 
   // Track lead
@@ -187,6 +229,12 @@ async function buildAndSendFlow(
       status: "new",
       fbc,
       fbp,
+      utmifyClickId,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+      utmContent,
+      utmTerm,
     });
   }
 
@@ -288,10 +336,14 @@ export async function firePurchasePixels(params: {
     return;
   }
 
-  // Fetch fbc/fbp stored on the Lead (captured at /start via ClickToken)
+  // Fetch tracking data stored on the Lead (captured at /start via ClickToken)
   const lead = await prisma.lead.findFirst({
     where: { telegramId: params.telegramId, botId: params.botId },
-    select: { fbc: true, fbp: true },
+    select: {
+      fbc: true, fbp: true, utmifyClickId: true,
+      utmSource: true, utmMedium: true, utmCampaign: true, utmContent: true, utmTerm: true,
+      name: true, startedAt: true,
+    },
   }).catch(() => null);
 
   const nameParts = (params.telegramName ?? "").trim().split(/\s+/).filter(Boolean);
@@ -299,7 +351,7 @@ export async function firePurchasePixels(params: {
   const lastName  = nameParts.slice(1).join(" ") || null;
 
   console.log(
-    `[BotManager] Firing CAPI for ${pixels.length} pixel(s) | payment=${params.paymentDbId} | fbc=${lead?.fbc ?? "none"} | fbp=${lead?.fbp ?? "none"}`
+    `[BotManager] Firing CAPI for ${pixels.length} pixel(s) | payment=${params.paymentDbId} | fbc=${lead?.fbc ?? "none"} | fbp=${lead?.fbp ?? "none"} | utmifyClickId=${lead?.utmifyClickId ?? "none"}`
   );
 
   for (const pixel of pixels) {
@@ -320,6 +372,45 @@ export async function firePurchasePixels(params: {
 
     if (!result.success) {
       console.error(`[BotManager] CAPI failed for pixel ${pixel.name} (${pixel.pixelId}): ${result.error}`);
+    }
+  }
+
+  // ── UTMfy conversions ────────────────────────────────────────────────────
+  const trackers = await prisma.utmifyTracker.findMany({
+    where: {
+      userId: params.userId,
+      active: true,
+      OR: [
+        { scope: "global" },
+        ...(params.flowId
+          ? [{ scope: "specific", flows: { some: { flowId: params.flowId } } }]
+          : []),
+      ],
+    },
+  });
+
+  if (trackers.length > 0) {
+    const now = new Date();
+    console.log(`[BotManager] Firing UTMfy for ${trackers.length} tracker(s) | payment=${params.paymentDbId}`);
+    for (const tracker of trackers) {
+      const result = await sendUtmifyConversion({
+        token:         tracker.token,
+        orderId:       params.paymentDbId,
+        amountInCents: params.amountInCents,
+        customerName:  lead?.name ?? null,
+        telegramId:    params.telegramId,
+        utmSource:     lead?.utmSource   ?? null,
+        utmMedium:     lead?.utmMedium   ?? null,
+        utmCampaign:   lead?.utmCampaign ?? null,
+        utmContent:    lead?.utmContent  ?? null,
+        utmTerm:       lead?.utmTerm     ?? null,
+        planName:      params.planName,
+        createdAt:     lead?.startedAt ?? now,
+        paidAt:        now,
+      });
+      if (!result.success) {
+        console.error(`[BotManager] UTMfy failed for tracker ${tracker.name}: ${result.error}`);
+      }
     }
   }
 }

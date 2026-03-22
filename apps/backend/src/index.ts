@@ -8,6 +8,7 @@ import { gatewayRoutes } from "./routes/gateways.js";
 import { leadsRoutes } from "./routes/leads.js";
 import { paymentsRoutes } from "./routes/payments.js";
 import { pixelRoutes } from "./routes/pixels.js";
+import { utmifyRoutes } from "./routes/utmify.js";
 import { trackingRoutes } from "./routes/tracking.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import { remarketingRoutes } from "./routes/remarketings.js";
@@ -32,6 +33,7 @@ const app = new Elysia({ adapter: node() })
   .use(leadsRoutes)
   .use(paymentsRoutes)
   .use(pixelRoutes)
+  .use(utmifyRoutes)
   .use(trackingRoutes)
   .use(webhookRoutes)
   .use(remarketingRoutes)

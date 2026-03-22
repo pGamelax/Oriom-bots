@@ -141,6 +141,7 @@ model Flow {
   buttons            FlowButton[]
   gateways           GatewayOnFlow[]
   pixels             PixelOnFlow[]
+  utmifyTrackers     UtmifyTrackerOnFlow[]
   leads              Lead[]
   payments           Payment[]
   remarketings       Remarketing[]
@@ -186,13 +187,19 @@ model GatewayOnFlow {
 }
 
 model ClickToken {
-  id        String    @id @default(cuid())
-  token     String    @unique @default(cuid())
-  botId     String?
-  fbc       String?
-  fbp       String?
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  id              String    @id @default(cuid())
+  token           String    @unique @default(cuid())
+  botId           String?
+  fbc             String?
+  fbp             String?
+  utmifyClickId   String?
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  utmContent      String?
+  utmTerm         String?
+  usedAt          DateTime?
+  createdAt       DateTime  @default(now())
 }
 
 model Lead {
@@ -209,9 +216,15 @@ model Lead {
   status     String   @default("new")
   planName   String?
   planValue  Float?
-  fbc        String?
-  fbp        String?
-  startedAt  DateTime @default(now())
+  fbc             String?
+  fbp             String?
+  utmifyClickId   String?
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  utmContent      String?
+  utmTerm         String?
+  startedAt       DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@unique([telegramId, botId])
@@ -265,6 +278,28 @@ model PixelOnFlow {
   @@id([pixelId, flowId])
 }
 
+model UtmifyTracker {
+  id        String                  @id @default(cuid())
+  userId    String
+  user      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  token     String                  @db.Text
+  scope     String                  @default("global")
+  active    Boolean                 @default(true)
+  flows     UtmifyTrackerOnFlow[]
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+}
+
+model UtmifyTrackerOnFlow {
+  trackerId String
+  tracker   UtmifyTracker @relation(fields: [trackerId], references: [id], onDelete: Cascade)
+  flowId    String
+  flow      Flow          @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  @@id([trackerId, flowId])
+}
+
 model User {
   id            String        @id
   name          String
@@ -278,9 +313,10 @@ model User {
   bots          Bot[]
   flows         Flow[]
   gateways      Gateway[]
-  pixels        Pixel[]
-  leads         Lead[]
-  payments      Payment[]
-  remarketings  Remarketing[]
+  pixels           Pixel[]
+  utmifyTrackers   UtmifyTracker[]
+  leads            Lead[]
+  payments         Payment[]
+  remarketings     Remarketing[]
 }
 

@@ -399,6 +399,49 @@ export const remarketingsApi = {
     request<{ success: boolean }>(`/api/remarketings/${id}`, { method: "DELETE" }),
 };
 
+export interface UtmifyTrackerFlow {
+  trackerId: string;
+  flowId: string;
+  flow: {
+    id: string;
+    name: string | null;
+    caption: string;
+    bot: { username: string; name: string };
+  };
+}
+
+export interface UtmifyTracker {
+  id: string;
+  name: string;
+  token: string;
+  scope: "global" | "specific";
+  active: boolean;
+  flows: UtmifyTrackerFlow[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UtmifyTrackerPayload {
+  name: string;
+  token: string;
+  scope: "global" | "specific";
+  flowIds?: string[];
+}
+
+export const utmifyApi = {
+  list: () => request<UtmifyTracker[]>("/api/utmify"),
+  create: (data: UtmifyTrackerPayload) =>
+    request<UtmifyTracker>("/api/utmify", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: UtmifyTrackerPayload) =>
+    request<UtmifyTracker>(`/api/utmify/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  toggle: (id: string) =>
+    request<UtmifyTracker>(`/api/utmify/${id}/toggle`, { method: "PATCH" }),
+  delete: (id: string) =>
+    request<{ success: boolean }>(`/api/utmify/${id}`, { method: "DELETE" }),
+  test: (id: string) =>
+    request<{ success: boolean; orderId?: string; error?: string }>(`/api/utmify/${id}/test`, { method: "POST" }),
+};
+
 export const botsApi = {
   list: () => request<Bot[]>("/api/bots"),
   get: (id: string) => request<Bot>(`/api/bots/${id}`),
