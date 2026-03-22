@@ -2,7 +2,7 @@ import { Bot, Context, InlineKeyboard, InputFile } from "grammy";
 import { PrismaClient } from "@prisma/client";
 import { createPixPayment, checkPixPayment } from "./payment.js";
 import { sendFacebookPurchaseEvent } from "./facebook-capi.js";
-import { sendUtmifyConversion } from "./utmify.js";
+import { sendUtmifyConversion, type UtmifyStatus } from "./utmify.js";
 import { handleRemarketingCallback } from "./remarketing-scheduler.js";
 import QRCode from "qrcode";
 
@@ -306,6 +306,72 @@ async function sendPixMessages(
   await ctx.reply(afterLabel, { reply_markup: actions, parse_mode: "HTML" });
 }
 
+// ── UTMify event dispatcher ──────────────────────────────────────────────────
+
+export async function fireUtmifyEvent(params: {
+  userId: string;
+  botId: string;
+  flowId: string | null;
+  paymentDbId: string;
+  amountInCents: number;
+  planName: string | null;
+  telegramId: string;
+  telegramName: string | null;
+  status: UtmifyStatus;
+  createdAt: Date;
+  paidAt: Date;
+  refundedAt?: Date | null;
+}) {
+  const trackers = await prisma.utmifyTracker.findMany({
+    where: {
+      userId: params.userId,
+      active: true,
+      OR: [
+        { scope: "global" },
+        ...(params.flowId
+          ? [{ scope: "specific", flows: { some: { flowId: params.flowId } } }]
+          : []),
+      ],
+    },
+  });
+
+  if (trackers.length === 0) return;
+
+  const lead = await prisma.lead.findFirst({
+    where: { telegramId: params.telegramId, botId: params.botId },
+    select: {
+      name: true, startedAt: true,
+      utmSource: true, utmMedium: true, utmCampaign: true, utmContent: true, utmTerm: true,
+    },
+  }).catch(() => null);
+
+  console.log(`[BotManager] Firing UTMfy (${params.status}) for ${trackers.length} tracker(s) | payment=${params.paymentDbId}`);
+
+  for (const tracker of trackers) {
+    const result = await sendUtmifyConversion({
+      token:         tracker.token,
+      orderId:       params.paymentDbId,
+      amountInCents: params.amountInCents,
+      status:        params.status,
+      customerName:  lead?.name ?? params.telegramName ?? null,
+      telegramId:    params.telegramId,
+      utmSource:     lead?.utmSource   ?? null,
+      utmMedium:     lead?.utmMedium   ?? null,
+      utmCampaign:   lead?.utmCampaign ?? null,
+      utmContent:    lead?.utmContent  ?? null,
+      utmTerm:       lead?.utmTerm     ?? null,
+      planName:      params.planName,
+      createdAt:     params.createdAt,
+      paidAt:        params.paidAt,
+      refundedAt:    params.refundedAt,
+    });
+
+    if (!result.success) {
+      console.error(`[BotManager] UTMfy (${params.status}) failed for tracker ${tracker.name}: ${result.error}`);
+    }
+  }
+}
+
 // ── Facebook CAPI ────────────────────────────────────────────────────────────
 
 export async function firePurchasePixels(params: {
@@ -375,44 +441,21 @@ export async function firePurchasePixels(params: {
     }
   }
 
-  // ── UTMfy conversions ────────────────────────────────────────────────────
-  const trackers = await prisma.utmifyTracker.findMany({
-    where: {
-      userId: params.userId,
-      active: true,
-      OR: [
-        { scope: "global" },
-        ...(params.flowId
-          ? [{ scope: "specific", flows: { some: { flowId: params.flowId } } }]
-          : []),
-      ],
-    },
+  // ── UTMfy paid event ─────────────────────────────────────────────────────
+  const now = new Date();
+  await fireUtmifyEvent({
+    userId:        params.userId,
+    botId:         params.botId,
+    flowId:        params.flowId,
+    paymentDbId:   params.paymentDbId,
+    amountInCents: params.amountInCents,
+    planName:      params.planName,
+    telegramId:    params.telegramId,
+    telegramName:  params.telegramName,
+    status:        "paid",
+    createdAt:     lead?.startedAt ?? now,
+    paidAt:        now,
   });
-
-  if (trackers.length > 0) {
-    const now = new Date();
-    console.log(`[BotManager] Firing UTMfy for ${trackers.length} tracker(s) | payment=${params.paymentDbId}`);
-    for (const tracker of trackers) {
-      const result = await sendUtmifyConversion({
-        token:         tracker.token,
-        orderId:       params.paymentDbId,
-        amountInCents: params.amountInCents,
-        customerName:  lead?.name ?? null,
-        telegramId:    params.telegramId,
-        utmSource:     lead?.utmSource   ?? null,
-        utmMedium:     lead?.utmMedium   ?? null,
-        utmCampaign:   lead?.utmCampaign ?? null,
-        utmContent:    lead?.utmContent  ?? null,
-        utmTerm:       lead?.utmTerm     ?? null,
-        planName:      params.planName,
-        createdAt:     lead?.startedAt ?? now,
-        paidAt:        now,
-      });
-      if (!result.success) {
-        console.error(`[BotManager] UTMfy failed for tracker ${tracker.name}: ${result.error}`);
-      }
-    }
-  }
 }
 
 // ── Telegram notification on confirmed payment ────────────────────────────────
@@ -635,6 +678,22 @@ export async function startBot(botId: string, token: string) {
           paymentDbId:   paymentRecord.id,
         });
 
+        // Fire UTMify waiting_payment
+        const now = new Date();
+        fireUtmifyEvent({
+          userId:        flow.userId,
+          botId,
+          flowId:        flow.id,
+          paymentDbId:   paymentRecord.id,
+          amountInCents,
+          planName,
+          telegramId:    String(ctx.from.id),
+          telegramName:  telegramName(ctx.from),
+          status:        "waiting_payment",
+          createdAt:     now,
+          paidAt:        now,
+        }).catch((err) => console.error("[BotManager] UTMfy waiting_payment:", err.message));
+
         try {
           await sendPixMessages(ctx, pendingPayments.get(pid)!, flow);
         } catch (err: any) {
@@ -700,14 +759,35 @@ export async function startBot(botId: string, token: string) {
           expired: "⌛ <b>PIX expirado.</b> Por favor, gere um novo código.",
           cancelled: "❌ <b>Pagamento cancelado.</b>",
         };
+        if (status === "expired" || status === "cancelled") {
+          await prisma.payment.update({
+            where: { id: payment.paymentDbId },
+            data:  { status: "cancelled" },
+          }).catch(() => null);
+
+          fireUtmifyEvent({
+            userId:        payment.userId,
+            botId,
+            flowId:        payment.flowId,
+            paymentDbId:   payment.paymentDbId,
+            amountInCents: payment.amountInCents,
+            planName:      payment.planName,
+            telegramId:    String(payment.from.id),
+            telegramName:  telegramName(payment.from),
+            status:        "cancelled",
+            createdAt:     new Date(),
+            paidAt:        new Date(),
+          }).catch((err) => console.error("[BotManager] UTMfy cancelled:", err.message));
+        }
+
         if (status === "paid") {
           await setLeadStatus(payment.from, botId, "paid");
-          const updatedPayment = await prisma.payment.update({
+          await prisma.payment.update({
             where: { id: payment.paymentDbId },
             data:  { status: "paid", paidAt: new Date() },
           }).catch(() => null);
 
-          // Fire Facebook CAPI Purchase event
+          // Fire Facebook CAPI + UTMify paid
           firePurchasePixels({
             userId:        payment.userId,
             botId,

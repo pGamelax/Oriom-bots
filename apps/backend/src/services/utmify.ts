@@ -1,9 +1,12 @@
 // ── Types ───────────────────────────────────────────────────────────────────
 
+export type UtmifyStatus = "waiting_payment" | "paid" | "cancelled" | "refunded" | "chargeback";
+
 export interface UtmifyConversionPayload {
   token: string;
   orderId: string;
   amountInCents: number;
+  status: UtmifyStatus;
   isTest?: boolean;
   // Customer
   customerName: string | null;
@@ -19,6 +22,7 @@ export interface UtmifyConversionPayload {
   // Dates
   createdAt: Date;
   paidAt: Date;
+  refundedAt?: Date | null;
 }
 
 export interface UtmifyResult {
@@ -32,20 +36,23 @@ export interface UtmifyResult {
 export async function sendUtmifyConversion(
   payload: UtmifyConversionPayload
 ): Promise<UtmifyResult> {
-  const tag = `[UTMfy] orderId=${payload.orderId}`;
+  const tag = `[UTMfy] orderId=${payload.orderId} status=${payload.status}`;
 
   console.log(`${tag} → Sending order | value=R$${(payload.amountInCents / 100).toFixed(2)}`);
 
   const productName = payload.planName ?? "Produto";
   const isoCreated  = payload.createdAt.toISOString().replace("Z", "");
   const isoPaid     = payload.paidAt.toISOString().replace("Z", "");
+  const isoRefunded = payload.refundedAt
+    ? payload.refundedAt.toISOString().replace("Z", "")
+    : null;
 
   const body = {
     isTest:        payload.isTest ?? false,
     orderId:       payload.orderId,
     platform:      "Telegram",
     paymentMethod: "pix",
-    status:        "paid",
+    status:        payload.status,
     createdAt:     isoCreated,
     approvedDate:  isoPaid,
     customer: {
@@ -56,18 +63,18 @@ export async function sendUtmifyConversion(
     },
     products: [
       {
-        id:          payload.orderId,
-        name:        productName,
-        planId:      payload.orderId,
-        planName:    productName,
-        quantity:    1,
+        id:           payload.orderId,
+        name:         productName,
+        planId:       payload.orderId,
+        planName:     productName,
+        quantity:     1,
         priceInCents: payload.amountInCents,
       },
     ],
     commission: {
-      totalPriceInCents:      payload.amountInCents,
-      gatewayFeeInCents:      0,
-      userCommissionInCents:  payload.amountInCents,
+      totalPriceInCents:     payload.amountInCents,
+      gatewayFeeInCents:     0,
+      userCommissionInCents: payload.amountInCents,
     },
     trackingParameters: {
       utm_source:   payload.utmSource,
@@ -78,6 +85,7 @@ export async function sendUtmifyConversion(
       src:          null,
       sck:          null,
     },
+    refundedAt: isoRefunded,
   };
 
   let res: Response;

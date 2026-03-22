@@ -1,19 +1,28 @@
 import Elysia from "elysia";
 import { PrismaClient } from "@prisma/client";
 import { SyncPayService } from "../services/syncpay.js";
-import { firePurchasePixels, sendPaymentConfirmation } from "../services/bot-manager.js";
+import { firePurchasePixels, fireUtmifyEvent, sendPaymentConfirmation } from "../services/bot-manager.js";
 
 const prisma = new PrismaClient();
 
 // ── Status helpers ───────────────────────────────────────────────────────────
 
 function isPaidStatus(payload: Record<string, unknown>): boolean {
-  // SyncPay wraps the data in a "data" key
   const data = (payload.data ?? payload) as Record<string, unknown>;
-  const status = String(
-    data.status ?? data.payment_status ?? data.state ?? ""
-  ).toUpperCase();
+  const status = String(data.status ?? data.payment_status ?? data.state ?? "").toUpperCase();
   return ["PAID_OUT", "PAID", "PAGO", "APPROVED", "COMPLETED"].includes(status) || data.paid === true;
+}
+
+function isRefundedStatus(payload: Record<string, unknown>): boolean {
+  const data = (payload.data ?? payload) as Record<string, unknown>;
+  const status = String(data.status ?? data.payment_status ?? data.state ?? "").toUpperCase();
+  return ["REFUNDED", "REEMBOLSADO", "REVERSED"].includes(status);
+}
+
+function isChargebackStatus(payload: Record<string, unknown>): boolean {
+  const data = (payload.data ?? payload) as Record<string, unknown>;
+  const status = String(data.status ?? data.payment_status ?? data.state ?? "").toUpperCase();
+  return ["CHARGEBACK", "DISPUTE", "IN_DISPUTE"].includes(status);
 }
 
 // ── Webhook routes ───────────────────────────────────────────────────────────
@@ -96,7 +105,57 @@ export const webhookRoutes = new Elysia({ prefix: "/webhooks" })
       return { ok: true };
     }
 
-    // ── 4. Check if this webhook signals a paid status ────────────────────
+    // ── 4a. Refunded ──────────────────────────────────────────────────────
+    if (isRefundedStatus(body)) {
+      console.log(`[Webhook/SyncPay] Refund received for payment ${payment.id}`);
+      const refundedAt = new Date();
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data:  { status: "refunded" },
+      });
+      fireUtmifyEvent({
+        userId:        payment.userId,
+        botId:         payment.botId,
+        flowId:        payment.flowId,
+        paymentDbId:   payment.id,
+        amountInCents: payment.amountInCents,
+        planName:      payment.planName,
+        telegramId:    payment.telegramId,
+        telegramName:  payment.telegramName,
+        status:        "refunded",
+        createdAt:     payment.createdAt,
+        paidAt:        payment.paidAt ?? refundedAt,
+        refundedAt,
+      }).catch((err) => console.error("[Webhook/SyncPay] UTMfy refunded:", err.message));
+      return { ok: true };
+    }
+
+    // ── 4b. Chargeback ────────────────────────────────────────────────────
+    if (isChargebackStatus(body)) {
+      console.log(`[Webhook/SyncPay] Chargeback received for payment ${payment.id}`);
+      const refundedAt = new Date();
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data:  { status: "chargeback" },
+      });
+      fireUtmifyEvent({
+        userId:        payment.userId,
+        botId:         payment.botId,
+        flowId:        payment.flowId,
+        paymentDbId:   payment.id,
+        amountInCents: payment.amountInCents,
+        planName:      payment.planName,
+        telegramId:    payment.telegramId,
+        telegramName:  payment.telegramName,
+        status:        "chargeback",
+        createdAt:     payment.createdAt,
+        paidAt:        payment.paidAt ?? refundedAt,
+        refundedAt,
+      }).catch((err) => console.error("[Webhook/SyncPay] UTMfy chargeback:", err.message));
+      return { ok: true };
+    }
+
+    // ── 4c. Check if this webhook signals a paid status ───────────────────
     if (!isPaidStatus(body)) {
       console.log(`[Webhook/SyncPay] Status not paid for payment ${payment.id} — ignoring`);
       return { ok: true };
