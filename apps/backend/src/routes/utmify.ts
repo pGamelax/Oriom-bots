@@ -115,6 +115,7 @@ export const utmifyRoutes = new Elysia({ prefix: "/api/utmify" })
       token:         tracker.token,
       orderId,
       amountInCents: 9700,
+      status:        "paid",
       isTest:        true,
       customerName:  "Cliente Teste",
       telegramId:    "000000000",
