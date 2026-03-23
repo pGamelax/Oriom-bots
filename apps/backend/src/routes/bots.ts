@@ -106,7 +106,12 @@ export const botRoutes = new Elysia({ prefix: "/api/bots" })
 
       const updated = await prisma.bot.update({
         where: { id: params.id },
-        data: { name: body.name, username: body.username, token: body.token },
+        data: {
+          name:         body.name,
+          username:     body.username,
+          token:        body.token,
+          cloakSafeUrl: body.cloakSafeUrl ?? null,
+        },
       });
 
       // Reinicia com novo token
@@ -116,9 +121,10 @@ export const botRoutes = new Elysia({ prefix: "/api/bots" })
     },
     {
       body: t.Object({
-        name: t.String(),
-        username: t.String(),
-        token: t.String(),
+        name:         t.String(),
+        username:     t.String(),
+        token:        t.String(),
+        cloakSafeUrl: t.Optional(t.String()),
       }),
     }
   )

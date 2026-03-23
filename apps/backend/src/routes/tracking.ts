@@ -3,6 +3,27 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// ── Facebook / Meta signals ──────────────────────────────────────────────────
+
+const FB_UA_PATTERNS = [
+  "facebookexternalhit",
+  "facebot",
+  "facebookbot",
+  "meta-externalagent",
+];
+
+function isFromFacebook(request: Request, fbclid: string | null): boolean {
+  if (fbclid) return true;
+
+  const referer  = (request.headers.get("referer") ?? "").toLowerCase();
+  if (referer.includes("facebook.com") || referer.includes("instagram.com") || referer.includes("fb.com")) return true;
+
+  const ua = (request.headers.get("user-agent") ?? "").toLowerCase();
+  if (FB_UA_PATTERNS.some((p) => ua.includes(p))) return true;
+
+  return false;
+}
+
 /**
  * Tracking routes — no auth required.
  *
@@ -12,15 +33,19 @@ const prisma = new PrismaClient();
  *  3. HTML JS reads _fbp cookie and POSTs to /track/fbp before redirecting
  *  4. Redirect → https://t.me/:botUsername?start=:token
  *  5. User opens bot → /start :token → bot attaches fbc/fbp to the Lead
+ *
+ * Cloaking:
+ *  - If the visitor is NOT from Facebook/Instagram and the bot has cloakSafeUrl set,
+ *    they are redirected immediately to the safe URL instead of the Telegram bot.
  */
 export const trackingRoutes = new Elysia()
   // ── GET /track/:botUsername ──────────────────────────────────────────────
   .get(
     "/track/:botUsername",
-    async ({ params, query }) => {
+    async ({ params, query, request }) => {
       const bot = await prisma.bot.findFirst({
         where: { username: params.botUsername, active: true },
-        select: { id: true, username: true },
+        select: { id: true, username: true, cloakSafeUrl: true },
       });
 
       if (!bot) {
@@ -29,6 +54,15 @@ export const trackingRoutes = new Elysia()
 
       const q = query as Record<string, string>;
       const fbclid        = q.fbclid ?? null;
+
+      // ── Cloaking ──────────────────────────────────────────────────────────
+      if (bot.cloakSafeUrl && !isFromFacebook(request, fbclid)) {
+        return new Response(null, {
+          status: 302,
+          headers: { Location: bot.cloakSafeUrl },
+        });
+      }
+      // ──────────────────────────────────────────────────────────────────────
       const utmifyClickId = q.clickid ?? null;
       const utmSource     = q.utm_source   ?? null;
       const utmMedium     = q.utm_medium   ?? null;

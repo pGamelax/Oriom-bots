@@ -12,6 +12,7 @@ import { utmifyRoutes } from "./routes/utmify.js";
 import { trackingRoutes } from "./routes/tracking.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import { remarketingRoutes } from "./routes/remarketings.js";
+import { redirectRoutes } from "./routes/redirect.js";
 import { startAllBots } from "./services/bot-manager.js";
 import { startRemarketingScheduler } from "./services/remarketing-scheduler.js";
 
@@ -37,6 +38,7 @@ const app = new Elysia({ adapter: node() })
   .use(trackingRoutes)
   .use(webhookRoutes)
   .use(remarketingRoutes)
+  .use(redirectRoutes)
   .get("/health", () => ({ status: "ok" }))
   .listen(process.env.PORT ?? 3000);
 

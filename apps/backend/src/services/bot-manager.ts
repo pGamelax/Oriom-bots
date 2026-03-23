@@ -506,10 +506,13 @@ export async function sendPaymentConfirmation(
   try {
     await bot.api.sendMessage(telegramId, message, { parse_mode: "HTML" });
 
-    // ── Send delivery URL as a separate message ──────────────────────────────
+    // ── Send delivery URL as a cloaked link ──────────────────────────────────
     if (deliveryUrl) {
-      await bot.api.sendMessage(telegramId, deliveryUrl);
-      console.log(`[BotManager] Delivery URL sent to telegramId=${telegramId}`);
+      const cloak = await prisma.linkCloak.create({ data: { targetUrl: deliveryUrl } });
+      const backendUrl = (process.env.BACKEND_URL ?? "http://localhost:3000").replace(/\/$/, "");
+      const cloakedUrl = `${backendUrl}/r/${cloak.token}`;
+      await bot.api.sendMessage(telegramId, cloakedUrl);
+      console.log(`[BotManager] Delivery URL (cloaked) sent to telegramId=${telegramId}`);
     } else {
       console.warn(`[BotManager] No delivery URL configured for flowId=${flowId}`);
     }

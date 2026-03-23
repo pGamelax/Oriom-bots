@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bot, CheckCircle2, Loader2, KeyRound } from "lucide-react";
+import { ArrowLeft, Bot, CheckCircle2, Loader2, KeyRound, ShieldCheck } from "lucide-react";
 import { botsApi } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,7 @@ function EditBotPage() {
   const [token, setToken] = useState("");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
+  const [cloakSafeUrl, setCloakSafeUrl] = useState("");
   const [fetching, setFetching] = useState(false);
   const [tokenVerified, setTokenVerified] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -47,6 +48,7 @@ function EditBotPage() {
       setToken(bot.token);
       setName(bot.name);
       setUsername(bot.username);
+      setCloakSafeUrl(bot.cloakSafeUrl ?? "");
       setTokenVerified(true);
     }
   }, [bot]);
@@ -104,7 +106,7 @@ function EditBotPage() {
       toast.error("Verifique o token antes de salvar.");
       return;
     }
-    updateMutation.mutate({ name, username, token: token.trim() });
+    updateMutation.mutate({ name, username, token: token.trim(), cloakSafeUrl: cloakSafeUrl.trim() || undefined });
   }
 
   if (isLoading) {
@@ -223,6 +225,29 @@ function EditBotPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Cloaker section */}
+        <div className="p-4 sm:p-6 border-b border-border">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-lilac-light flex items-center justify-center">
+              <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <span className="text-sm font-semibold text-text-strong">
+              Cloaker de anúncio
+            </span>
+          </div>
+          <p className="text-xs text-text-muted mb-3">
+            Se o visitante não veio de um anúncio do Facebook/Instagram, ele será redirecionado para esta URL no lugar do bot.
+            Deixe em branco para desativar.
+          </p>
+          <input
+            type="url"
+            value={cloakSafeUrl}
+            onChange={(e) => setCloakSafeUrl(e.target.value)}
+            placeholder="https://seusite.com/pagina-segura"
+            className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-placeholder"
+          />
         </div>
 
         {/* Actions */}

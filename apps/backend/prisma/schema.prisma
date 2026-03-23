@@ -52,12 +52,13 @@ model Verification {
 }
 
 model Bot {
-  id        String    @id @default(cuid())
-  name      String
-  username  String
-  token     String    @unique
-  active    Boolean   @default(true)
-  userId    String
+  id             String    @id @default(cuid())
+  name           String
+  username       String
+  token          String    @unique
+  active         Boolean   @default(true)
+  cloakSafeUrl   String?
+  userId         String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   flow      Flow?
   leads     Lead[]
@@ -298,6 +299,13 @@ model UtmifyTrackerOnFlow {
   flow      Flow          @relation(fields: [flowId], references: [id], onDelete: Cascade)
 
   @@id([trackerId, flowId])
+}
+
+model LinkCloak {
+  id        String   @id @default(cuid())
+  token     String   @unique @default(cuid())
+  targetUrl String
+  createdAt DateTime @default(now())
 }
 
 model User {

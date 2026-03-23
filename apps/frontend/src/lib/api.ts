@@ -24,6 +24,7 @@ export interface Bot {
   username: string;
   token: string;
   active: boolean;
+  cloakSafeUrl: string | null;
   flow?: { id: string } | null;
   createdAt: string;
   updatedAt: string;
@@ -447,7 +448,7 @@ export const botsApi = {
   get: (id: string) => request<Bot>(`/api/bots/${id}`),
   create: (data: { name: string; username: string; token: string }) =>
     request<Bot>("/api/bots", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: { name: string; username: string; token: string }) =>
+  update: (id: string, data: { name: string; username: string; token: string; cloakSafeUrl?: string }) =>
     request<Bot>(`/api/bots/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   delete: (id: string) =>
     request<{ success: boolean }>(`/api/bots/${id}`, { method: "DELETE" }),
