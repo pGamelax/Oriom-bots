@@ -188,6 +188,7 @@ export function Sidebar() {
           "md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-surface flex flex-col transition-transform duration-300 shadow-2xl",
           sheetOpen ? "translate-x-0" : "-translate-x-full"
         )}
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         {/* Sheet header */}
         <div className="h-16 flex items-center justify-between px-5 border-b border-border">
@@ -211,7 +212,7 @@ export function Sidebar() {
         </nav>
 
         {/* User footer */}
-        <div className="border-t border-border p-3">
+        <div className="border-t border-border p-3" style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
           <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
             <div className="w-8 h-8 rounded-full bg-lilac-light flex items-center justify-center shrink-0">
               <User className="w-4 h-4 text-primary" />
