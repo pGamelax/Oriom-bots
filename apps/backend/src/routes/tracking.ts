@@ -12,14 +12,37 @@ const FB_UA_PATTERNS = [
   "meta-externalagent",
 ];
 
-function isFromFacebook(request: Request, fbclid: string | null): boolean {
-  if (fbclid) return true;
+const FB_UTM_SOURCES = ["fb", "facebook", "ig", "instagram", "meta"];
 
-  const referer  = (request.headers.get("referer") ?? "").toLowerCase();
-  if (referer.includes("facebook.com") || referer.includes("instagram.com") || referer.includes("fb.com")) return true;
+function isFromFacebook(request: Request, q: Record<string, string>): boolean {
+  // 1. fbclid from Elysia's parsed query
+  if (q.fbclid) return true;
 
-  const ua = (request.headers.get("user-agent") ?? "").toLowerCase();
-  if (FB_UA_PATTERNS.some((p) => ua.includes(p))) return true;
+  // 2. utm_source signals (ig, fb, facebook, etc.)
+  const utmSource = (q.utm_source ?? "").toLowerCase();
+  if (FB_UTM_SOURCES.some((s) => utmSource === s)) return true;
+
+  // 3. utm_id present (Facebook always adds it to ad URLs)
+  if (q.utm_id) return true;
+
+  // 4. Parse fbclid directly from the raw URL (fallback — Elysia query edge cases)
+  try {
+    const searchParams = new URL(request.url).searchParams;
+    if (searchParams.get("fbclid")) return true;
+    const src = (searchParams.get("utm_source") ?? "").toLowerCase();
+    if (FB_UTM_SOURCES.some((s) => src === s)) return true;
+    if (searchParams.get("utm_id")) return true;
+  } catch {}
+
+  // 5. Referer header
+  try {
+    const referer = (request.headers.get("referer") ?? "").toLowerCase();
+    if (referer.includes("facebook.com") || referer.includes("instagram.com") || referer.includes("fb.com")) return true;
+
+    // 6. User-Agent (Meta crawlers)
+    const ua = (request.headers.get("user-agent") ?? "").toLowerCase();
+    if (FB_UA_PATTERNS.some((p) => ua.includes(p))) return true;
+  } catch {}
 
   return false;
 }
@@ -56,7 +79,7 @@ export const trackingRoutes = new Elysia()
       const fbclid        = q.fbclid ?? null;
 
       // ── Cloaking ──────────────────────────────────────────────────────────
-      if (bot.cloakSafeUrl && !isFromFacebook(request, fbclid)) {
+      if (bot.cloakSafeUrl && !isFromFacebook(request, q)) {
         return new Response(null, {
           status: 302,
           headers: { Location: bot.cloakSafeUrl },
