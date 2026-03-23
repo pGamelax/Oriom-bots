@@ -54,7 +54,7 @@ function EditBotPage() {
   }, [bot]);
 
   const updateMutation = useMutation({
-    mutationFn: (data: { name: string; username: string; token: string }) =>
+    mutationFn: (data: { name: string; username: string; token: string; cloakSafeUrl?: string }) =>
       botsApi.update(botId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bots"] });
